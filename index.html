@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- physico-wallet v1.3 -->
+<!-- physico-wallet v1.4 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -129,6 +129,16 @@ input,select,textarea{font-family:inherit}
 }
 .cat-chip.active{border-color:var(--indigo);background:var(--indigo-bg);color:var(--indigo)}
 .cat-chip:hover:not(.active){border-color:var(--border2);color:var(--text)}
+
+/* 할부 칩 */
+.install-chips{display:flex;flex-wrap:wrap;gap:6px}
+.install-chip{
+  padding:5px 11px;border-radius:7px;font-size:12px;font-weight:600;
+  border:1px solid var(--border2);color:var(--text3);
+  background:var(--surface2);transition:all .15s;
+}
+.install-chip.active{border-color:var(--purple);color:var(--purple);background:rgba(168,85,247,.1)}
+.install-chip:hover:not(.active){color:var(--text);border-color:var(--border2)}
 
 /* 카드 선택 */
 .card-chips{display:flex;gap:6px;flex-wrap:wrap}
@@ -428,6 +438,27 @@ input,select,textarea{font-family:inherit}
             <option value="환급">환급/환전</option>
             <option value="기타">기타</option>
           </select>
+        </div>
+      </div>
+
+      <!-- 할부 (카드 결제 시만 표시) -->
+      <div class="form-group hidden" id="installmentGroup">
+        <label>할부</label>
+        <div class="install-chips" id="installmentChips">
+          <button class="install-chip active" data-val="0">일시불</button>
+          <button class="install-chip" data-val="2">2개월</button>
+          <button class="install-chip" data-val="3">3개월</button>
+          <button class="install-chip" data-val="4">4개월</button>
+          <button class="install-chip" data-val="5">5개월</button>
+          <button class="install-chip" data-val="6">6개월</button>
+          <button class="install-chip" data-val="7">7개월</button>
+          <button class="install-chip" data-val="8">8개월</button>
+          <button class="install-chip" data-val="9">9개월</button>
+          <button class="install-chip" data-val="10">10개월</button>
+          <button class="install-chip" data-val="11">11개월</button>
+          <button class="install-chip" data-val="12">12개월</button>
+          <button class="install-chip" data-val="24">24개월</button>
+          <button class="install-chip" data-val="36">36개월</button>
         </div>
       </div>
 
@@ -872,9 +903,24 @@ function setInputType(type){
   document.getElementById('merchantLabel').textContent = isExpense ? '가맹점 / 내역' : '수입 내역';
   document.getElementById('inMerchant').placeholder = isExpense ? '예: 신장유주유소, GS25, 배달의민족' : '예: 월급, 프리랜서비, 이자';
   if(!isExpense) selectedCat = '수입';
+  // 할부: 지출 + 현금 아닌 카드일 때만 표시
+  const card = document.getElementById('inCard').value;
+  document.getElementById('installmentGroup').classList.toggle('hidden', !isExpense || card==='현금');
 }
 document.getElementById('typeExpense').addEventListener('click', ()=> setInputType('expense'));
 document.getElementById('typeIncome').addEventListener('click',  ()=> setInputType('income'));
+
+// 카드 변경 → 할부 표시/숨김
+document.getElementById('inCard').addEventListener('change', ()=>{
+  const card = document.getElementById('inCard').value;
+  const grp = document.getElementById('installmentGroup');
+  if(card === '현금'){
+    grp.classList.add('hidden');
+    resetInstallment();
+  } else {
+    grp.classList.remove('hidden');
+  }
+});
 
 // ══════════════════════════════════════════════════════════
 // 카테고리 칩 선택
@@ -888,6 +934,26 @@ document.querySelectorAll('#catChips .cat-chip').forEach(chip=>{
 });
 
 // ══════════════════════════════════════════════════════════
+// 할부 칩 선택
+// ══════════════════════════════════════════════════════════
+let selectedInstallment = 0; // 0 = 일시불
+
+document.getElementById('installmentChips').addEventListener('click', e=>{
+  const chip = e.target.closest('.install-chip');
+  if(!chip) return;
+  document.querySelectorAll('#installmentChips .install-chip').forEach(c=>c.classList.remove('active'));
+  chip.classList.add('active');
+  selectedInstallment = parseInt(chip.dataset.val)||0;
+});
+
+function resetInstallment(){
+  selectedInstallment = 0;
+  document.querySelectorAll('#installmentChips .install-chip').forEach(c=>c.classList.remove('active'));
+  const first = document.querySelector('#installmentChips .install-chip[data-val="0"]');
+  if(first) first.classList.add('active');
+}
+
+// ══════════════════════════════════════════════════════════
 // 입력 폼 초기값
 // ══════════════════════════════════════════════════════════
 function resetForm(){
@@ -897,6 +963,7 @@ function resetForm(){
   document.getElementById('inMemo').value = '';
   document.querySelectorAll('#catChips .cat-chip').forEach(c=>c.classList.remove('active'));
   selectedCat = '';
+  resetInstallment();
   setInputType('expense');
 }
 resetForm();
@@ -920,6 +987,7 @@ document.getElementById('btnSave').addEventListener('click', async ()=>{
   const isIncome = inputType === 'income';
   const card     = isIncome ? null : document.getElementById('inCard').value;
   const category = isIncome ? '수입' : selectedCat;
+  const installment = isIncome ? 0 : selectedInstallment;
 
   if(!date || !amount || !merchant){
     showToast('날짜, 금액, 내역을 입력해주세요', 'error');
@@ -938,6 +1006,7 @@ document.getElementById('btnSave').addEventListener('click', async ()=>{
       date, amount, merchant,
       category,
       card,
+      installment,
       memo: memo || null,
       is_income: isIncome,
       user_id: currentUser.id,
@@ -1079,7 +1148,7 @@ function expenseItemHTML(e){
       <div class="expense-merchant">${e.merchant}</div>
       <div class="expense-meta">
         <span class="cat-dot" style="background:${color}"></span>
-        ${e.category}${e.card ? ' · '+e.card : ''}
+        ${e.category}${e.card ? ' · '+e.card : ''}${e.installment > 0 ? ` · ${e.installment}개월 할부` : ''}
         ${e.memo ? `· ${e.memo}` : ''}
         ${badge}
       </div>
