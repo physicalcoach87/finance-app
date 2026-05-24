@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- physico-wallet v1.7 -->
+<!-- physico-wallet v1.8 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -518,6 +518,9 @@ input,select,textarea{font-family:inherit}
           <button class="cat-chip" data-cat="쇼핑">🛍️ 쇼핑</button>
           <button class="cat-chip" data-cat="여행">✈️ 여행</button>
           <button class="cat-chip" data-cat="고정비">🔒 고정비</button>
+          <button class="cat-chip" data-cat="보험">🛡️ 보험</button>
+          <button class="cat-chip" data-cat="대출/금융">🏦 대출/금융</button>
+          <button class="cat-chip" data-cat="모임/회비">🤝 모임/회비</button>
           <button class="cat-chip" data-cat="기타">📦 기타</button>
         </div>
       </div>
@@ -580,6 +583,9 @@ input,select,textarea{font-family:inherit}
     <button class="filter-chip" data-cat="쇼핑">🛍️ 쇼핑</button>
     <button class="filter-chip" data-cat="여행">✈️ 여행</button>
     <button class="filter-chip" data-cat="고정비">🔒 고정비</button>
+    <button class="filter-chip" data-cat="보험">🛡️ 보험</button>
+    <button class="filter-chip" data-cat="대출/금융">🏦 대출/금융</button>
+    <button class="filter-chip" data-cat="모임/회비">🤝 모임/회비</button>
     <button class="filter-chip" data-cat="기타">📦 기타</button>
   </div>
 
@@ -724,6 +730,9 @@ input,select,textarea{font-family:inherit}
             color:var(--text);font-size:14px;outline:none;
           ">
             <option value="고정비">🔒 고정비</option>
+            <option value="보험">🛡️ 보험</option>
+            <option value="대출/금융">🏦 대출/금융</option>
+            <option value="모임/회비">🤝 모임/회비</option>
             <option value="구독">📱 구독</option>
             <option value="교통/주유">⛽ 교통/주유</option>
             <option value="의료/뷰티">💊 의료/뷰티</option>
@@ -1009,11 +1018,15 @@ const CAT_COLORS = {
   '쇼핑':        '#a855f7',
   '여행':        '#38bdf8',
   '고정비':      '#64748b',
+  '보험':        '#0ea5e9',
+  '대출/금융':   '#f43f5e',
+  '모임/회비':   '#eab308',
   '기타':        '#6b7280',
 };
 const CAT_ICONS = {
   '식비':'🍚','교통/주유':'⛽','의료/뷰티':'💊',
-  '구독':'📱','쇼핑':'🛍️','여행':'✈️','고정비':'🔒','기타':'📦',
+  '구독':'📱','쇼핑':'🛍️','여행':'✈️','고정비':'🔒',
+  '보험':'🛡️','대출/금융':'🏦','모임/회비':'🤝','기타':'📦',
 };
 
 // ══════════════════════════════════════════════════════════
@@ -1447,9 +1460,9 @@ async function renderAnalysis(){
     }).join('');
   }
 
-  // 고정비 vs 변동비
-  const fixedCats = ['고정비','구독'];
-  const fixedTotal = (catTotals['고정비']||0)+(catTotals['구독']||0);
+  // 고정비 vs 변동비 (고정비·보험·대출/금융·구독·모임/회비)
+  const fixedCats = ['고정비','보험','대출/금융','구독','모임/회비'];
+  const fixedTotal = fixedCats.reduce((s,c)=>s+(catTotals[c]||0), 0);
   const varTotal   = monthTotal - fixedTotal;
   const fixedPct   = monthTotal>0 ? Math.round(fixedTotal/monthTotal*100) : 0;
   const fvEl = document.getElementById('fixedVarChart');
