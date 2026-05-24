@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- physico-wallet v1.6 -->
+<!-- physico-wallet v1.7 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -410,6 +410,24 @@ input,select,textarea{font-family:inherit}
 
 <!-- ════ 탭: 입력 ════ -->
 <div class="content" id="tab-input">
+
+  <!-- 고정비 미추가 배너 -->
+  <div id="recurringBanner" class="hidden" style="
+    background:linear-gradient(135deg,rgba(99,102,241,.12),rgba(99,102,241,.06));
+    border:1px solid rgba(99,102,241,.3);border-radius:13px;
+    padding:14px;margin-bottom:14px;
+  ">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <div style="font-size:13px;font-weight:700;color:var(--indigo)">🔒 이번 달 고정비</div>
+      <span id="recurringPendingCount" style="font-size:11px;color:var(--text3);font-weight:600"></span>
+    </div>
+    <div id="recurringPendingList" style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.7"></div>
+    <button id="btnAddAllRecurring" style="
+      width:100%;padding:10px;background:var(--indigo);color:#fff;
+      border-radius:9px;font-size:13px;font-weight:700;border:none;cursor:pointer;
+    ">한꺼번에 추가</button>
+  </div>
+
   <div class="section">
     <div class="input-form">
 
@@ -641,6 +659,86 @@ input,select,textarea{font-family:inherit}
 <!-- ════ 탭: 설정 ════ -->
 <div class="content hidden" id="tab-settings">
 
+  <!-- 고정 지출 관리 -->
+  <div class="section">
+    <div class="section-title">고정 지출 관리</div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:14px">
+
+      <!-- 등록 목록 -->
+      <div id="recurringList">
+        <div style="font-size:13px;color:var(--text3);padding:4px 0">등록된 고정 지출이 없습니다</div>
+      </div>
+
+      <!-- 추가 폼 -->
+      <div style="border-top:1px solid var(--border);padding-top:14px;display:flex;flex-direction:column;gap:8px">
+        <div style="font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">새 고정 지출 추가</div>
+        <input type="text" id="recurringName" placeholder="이름 (예: 삼성화재 보험료, 넷플릭스)" maxlength="30" style="
+          width:100%;padding:10px 12px;background:var(--surface2);
+          border:1px solid var(--border2);border-radius:9px;
+          color:var(--text);font-size:14px;outline:none;
+        ">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div style="position:relative">
+            <input type="number" id="recurringAmount" placeholder="금액" min="0" style="
+              width:100%;padding:10px 28px 10px 12px;background:var(--surface2);
+              border:1px solid var(--border2);border-radius:9px;
+              color:var(--text);font-size:14px;outline:none;
+            ">
+            <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--text3)">원</span>
+          </div>
+          <select id="recurringDay" style="
+            padding:10px 12px;background:var(--surface2);
+            border:1px solid var(--border2);border-radius:9px;
+            color:var(--text);font-size:14px;outline:none;
+          ">
+            <option value="">날짜 선택</option>
+            <option value="1">매월 1일</option><option value="2">매월 2일</option>
+            <option value="3">매월 3일</option><option value="4">매월 4일</option>
+            <option value="5">매월 5일</option><option value="6">매월 6일</option>
+            <option value="7">매월 7일</option><option value="8">매월 8일</option>
+            <option value="9">매월 9일</option><option value="10">매월 10일</option>
+            <option value="11">매월 11일</option><option value="12">매월 12일</option>
+            <option value="13">매월 13일</option><option value="14">매월 14일</option>
+            <option value="15">매월 15일</option><option value="16">매월 16일</option>
+            <option value="17">매월 17일</option><option value="18">매월 18일</option>
+            <option value="19">매월 19일</option><option value="20">매월 20일</option>
+            <option value="21">매월 21일</option><option value="22">매월 22일</option>
+            <option value="23">매월 23일</option><option value="24">매월 24일</option>
+            <option value="25">매월 25일</option><option value="26">매월 26일</option>
+            <option value="27">매월 27일</option><option value="28">매월 28일</option>
+            <option value="29">매월 29일</option><option value="30">매월 30일</option>
+            <option value="31">매월 31일</option>
+          </select>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <select id="recurringCard" style="
+            padding:10px 12px;background:var(--surface2);
+            border:1px solid var(--border2);border-radius:9px;
+            color:var(--text);font-size:14px;outline:none;
+          ">
+            <option value="현금">현금</option>
+          </select>
+          <select id="recurringCat" style="
+            padding:10px 12px;background:var(--surface2);
+            border:1px solid var(--border2);border-radius:9px;
+            color:var(--text);font-size:14px;outline:none;
+          ">
+            <option value="고정비">🔒 고정비</option>
+            <option value="구독">📱 구독</option>
+            <option value="교통/주유">⛽ 교통/주유</option>
+            <option value="의료/뷰티">💊 의료/뷰티</option>
+            <option value="식비">🍚 식비</option>
+            <option value="기타">📦 기타</option>
+          </select>
+        </div>
+        <button id="btnAddRecurring" style="
+          width:100%;padding:11px;background:var(--indigo);color:#fff;
+          border-radius:9px;font-size:14px;font-weight:700;border:none;cursor:pointer;
+        ">🔒 등록</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 내 카드 관리 -->
   <div class="section">
     <div class="section-title">내 카드 관리</div>
@@ -787,6 +885,7 @@ async function initAuth(){
     hideLogin();
     updateMonthLabel();
     await loadUserCards();
+    await loadRecurringExpenses();
     loadExpenses();
   } else {
     showLogin();
@@ -799,10 +898,12 @@ async function initAuth(){
       hideLogin();
       updateMonthLabel();
       await loadUserCards();
+      await loadRecurringExpenses();
       loadExpenses();
     } else {
       currentUser = null;
       userCards = [];
+      recurringExpenses = [];
       showLogin();
     }
   });
@@ -891,6 +992,7 @@ let historyFilterCat = '전체'; // 내역탭 필터
 let expenses = []; // 현재 월 전체 내역 캐시 (지출+수입)
 let stmtItems = []; // 명세서 파싱 결과
 let userCards = []; // 사용자 등록 카드 목록 [{id, name}]
+let recurringExpenses = []; // 고정 지출 목록
 
 const PRESET_CARDS = [
   '신한카드','KB국민카드','현대카드','삼성카드','비씨카드',
@@ -1135,6 +1237,7 @@ async function loadExpenses(){
   if(error){ expenses = []; return; }
   expenses = data || [];
   renderTodayList();
+  checkPendingRecurring();
   // 내역/분석 탭이 열려있으면 갱신
   if(!document.getElementById('tab-history').classList.contains('hidden')) renderHistory();
   if(!document.getElementById('tab-analysis').classList.contains('hidden')) renderAnalysis();
@@ -1433,6 +1536,9 @@ function renderSettings(){
   // 이메일
   document.getElementById('settingsEmail').textContent = currentUser.email;
 
+  // 고정 지출 렌더
+  renderRecurringSettings();
+
   // 등록된 카드 목록
   const listEl = document.getElementById('myCardsList');
   if(!userCards.length){
@@ -1477,6 +1583,145 @@ document.getElementById('customCardInput').addEventListener('keydown', e=>{
     addCard(input.value).then(()=>{ input.value=''; });
   }
 });
+
+// ══════════════════════════════════════════════════════════
+// 고정 지출 관리
+// ══════════════════════════════════════════════════════════
+async function loadRecurringExpenses(){
+  if(!currentUser) return;
+  const { data } = await supa.from('recurring_expenses')
+    .select('*').eq('user_id', currentUser.id)
+    .order('day_of_month', {ascending:true});
+  recurringExpenses = data || [];
+  checkPendingRecurring();
+}
+
+function checkPendingRecurring(){
+  const banner = document.getElementById('recurringBanner');
+  if(!recurringExpenses.length){ banner.classList.add('hidden'); return; }
+
+  const y = currentMonth.getFullYear();
+  const m = currentMonth.getMonth();
+  const monthStr = `${y}-${String(m+1).padStart(2,'0')}`;
+
+  const pending = recurringExpenses.filter(r =>
+    !expenses.some(e => e.merchant === r.name && e.date.startsWith(monthStr))
+  );
+
+  if(!pending.length){ banner.classList.add('hidden'); return; }
+
+  banner.classList.remove('hidden');
+  document.getElementById('recurringPendingCount').textContent = `${pending.length}건 미추가`;
+  document.getElementById('recurringPendingList').innerHTML =
+    pending.map(r=>`<span style="display:inline-block">• ${r.name} <strong>${fmt(r.amount)}</strong></span>`).join('<br>');
+}
+
+async function addAllPendingRecurring(){
+  const y = currentMonth.getFullYear();
+  const m = currentMonth.getMonth();
+  const monthStr = `${y}-${String(m+1).padStart(2,'0')}`;
+  const pending = recurringExpenses.filter(r =>
+    !expenses.some(e => e.merchant === r.name && e.date.startsWith(monthStr))
+  );
+  if(!pending.length) return;
+
+  const btn = document.getElementById('btnAddAllRecurring');
+  btn.disabled = true; btn.textContent = '추가 중...';
+  try {
+    const daysInMonth = new Date(y, m+1, 0).getDate();
+    const rows = pending.map(r => {
+      const day = Math.min(r.day_of_month, daysInMonth);
+      const date = `${monthStr}-${String(day).padStart(2,'0')}`;
+      return { date, merchant: r.name, amount: r.amount,
+        category: r.category, card: r.card || null,
+        is_income: false, installment: 0, user_id: currentUser.id };
+    });
+    const { error } = await supa.from('expenses').insert(rows);
+    if(error) throw new Error(error.message);
+    showToast(`🔒 고정비 ${pending.length}건 추가됐습니다`, 'success');
+    await loadExpenses();
+  } catch(e){
+    showToast('추가 실패: '+e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = '한꺼번에 추가';
+  }
+}
+
+async function addRecurring(){
+  const name   = document.getElementById('recurringName').value.trim();
+  const amount = parseInt(document.getElementById('recurringAmount').value);
+  const day    = parseInt(document.getElementById('recurringDay').value);
+  const card   = document.getElementById('recurringCard').value;
+  const cat    = document.getElementById('recurringCat').value;
+
+  if(!name || !amount || !day){
+    showToast('이름, 금액, 날짜를 모두 입력해주세요', 'error'); return;
+  }
+  const btn = document.getElementById('btnAddRecurring');
+  btn.disabled = true; btn.textContent = '등록 중...';
+  try {
+    const { error } = await supa.from('recurring_expenses').insert({
+      name, amount, day_of_month: day, card: card||null, category: cat, user_id: currentUser.id
+    });
+    if(error) throw new Error(error.message);
+    document.getElementById('recurringName').value = '';
+    document.getElementById('recurringAmount').value = '';
+    document.getElementById('recurringDay').value = '';
+    await loadRecurringExpenses();
+    renderRecurringSettings();
+    showToast('🔒 고정 지출 등록됐습니다', 'success');
+  } catch(e){
+    showToast('등록 실패: '+e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = '🔒 등록';
+  }
+}
+
+async function removeRecurring(id){
+  if(!confirm('고정 지출을 삭제할까요?')) return;
+  const { error } = await supa.from('recurring_expenses').delete().eq('id', id);
+  if(error){ showToast('삭제 실패', 'error'); return; }
+  await loadRecurringExpenses();
+  renderRecurringSettings();
+  showToast('삭제됐습니다');
+}
+
+function renderRecurringSettings(){
+  const listEl = document.getElementById('recurringList');
+  if(!recurringExpenses.length){
+    listEl.innerHTML = `<div style="font-size:13px;color:var(--text3);padding:4px 0">등록된 고정 지출이 없습니다</div>`;
+  } else {
+    listEl.innerHTML = recurringExpenses.map(r=>`
+      <div style="display:flex;align-items:center;justify-content:space-between;
+        padding:10px 0;border-bottom:1px solid var(--border)">
+        <div>
+          <div style="font-size:14px;font-weight:600">🔒 ${r.name}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:3px">
+            ${fmt(r.amount)} · 매월 ${r.day_of_month}일 · ${r.card||'현금'} · ${r.category}
+          </div>
+        </div>
+        <button onclick="removeRecurring('${r.id}')" style="
+          font-size:11px;color:var(--red);background:var(--red-dim);
+          border:1px solid rgba(239,68,68,.3);border-radius:6px;
+          padding:4px 10px;cursor:pointer;font-weight:600;flex-shrink:0;margin-left:10px;
+        ">삭제</button>
+      </div>`).join('');
+  }
+  // recurringCard 셀렉트 옵션 동기화
+  const cardSel = document.getElementById('recurringCard');
+  const cur = cardSel.value;
+  cardSel.innerHTML = '';
+  userCards.forEach(c=>{
+    const o = document.createElement('option');
+    o.value = c.name; o.textContent = c.name; cardSel.appendChild(o);
+  });
+  const cash = document.createElement('option');
+  cash.value='현금'; cash.textContent='현금'; cardSel.appendChild(cash);
+  if([...cardSel.options].some(o=>o.value===cur)) cardSel.value=cur;
+}
+
+document.getElementById('btnAddRecurring').addEventListener('click', addRecurring);
+document.getElementById('btnAddAllRecurring').addEventListener('click', addAllPendingRecurring);
 
 // ══════════════════════════════════════════════════════════
 // 명세서 파싱
