@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- physico-wallet v1.4 -->
+<!-- physico-wallet v1.4.1 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -131,11 +131,19 @@ input,select,textarea{font-family:inherit}
 .cat-chip:hover:not(.active){border-color:var(--border2);color:var(--text)}
 
 /* 할부 칩 */
-.install-chips{display:flex;flex-wrap:wrap;gap:6px}
+.install-chips{
+  display:flex;gap:6px;
+  overflow-x:auto;flex-wrap:nowrap;
+  padding-bottom:2px;
+  scrollbar-width:none;
+  -webkit-overflow-scrolling:touch;
+}
+.install-chips::-webkit-scrollbar{display:none}
 .install-chip{
   padding:5px 11px;border-radius:7px;font-size:12px;font-weight:600;
   border:1px solid var(--border2);color:var(--text3);
   background:var(--surface2);transition:all .15s;
+  flex-shrink:0;white-space:nowrap;
 }
 .install-chip.active{border-color:var(--purple);color:var(--purple);background:rgba(168,85,247,.1)}
 .install-chip:hover:not(.active){color:var(--text);border-color:var(--border2)}
