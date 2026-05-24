@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- physico-wallet v1.5 -->
+<!-- physico-wallet v1.6 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -375,17 +375,10 @@ input,select,textarea{font-family:inherit}
       <div class="logo-sub">자산 관리</div>
     </div>
   </div>
-  <div style="display:flex;align-items:center;gap:8px">
-    <div class="header-month">
-      <button class="month-nav" id="btnPrevMonth">‹</button>
-      <div class="month-label" id="monthLabel"></div>
-      <button class="month-nav" id="btnNextMonth">›</button>
-    </div>
-    <button id="btnLogout" title="로그아웃" style="
-      width:30px;height:30px;border-radius:7px;background:var(--surface2);
-      color:var(--text3);font-size:14px;display:flex;align-items:center;
-      justify-content:center;border:1px solid var(--border);
-    ">⏏</button>
+  <div class="header-month">
+    <button class="month-nav" id="btnPrevMonth">‹</button>
+    <div class="month-label" id="monthLabel"></div>
+    <button class="month-nav" id="btnNextMonth">›</button>
   </div>
 </div>
 
@@ -407,6 +400,10 @@ input,select,textarea{font-family:inherit}
     <button class="tab" data-tab="analysis">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
       분석
+    </button>
+    <button class="tab" data-tab="settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      설정
     </button>
   </div>
 </div>
@@ -641,6 +638,70 @@ input,select,textarea{font-family:inherit}
   </div>
 </div>
 
+<!-- ════ 탭: 설정 ════ -->
+<div class="content hidden" id="tab-settings">
+
+  <!-- 내 카드 관리 -->
+  <div class="section">
+    <div class="section-title">내 카드 관리</div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:16px">
+
+      <!-- 등록된 카드 목록 -->
+      <div>
+        <div style="font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">등록된 카드</div>
+        <div id="myCardsList">
+          <div style="font-size:13px;color:var(--text3);padding:6px 0">아래에서 카드를 추가해주세요</div>
+        </div>
+        <div style="padding:8px 0 0;font-size:13px;color:var(--text3);display:flex;align-items:center;gap:6px">
+          <span>💵</span> <span>현금 (기본 포함)</span>
+        </div>
+      </div>
+
+      <!-- 카드사 빠른 추가 -->
+      <div>
+        <div style="font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">카드사 빠른 추가</div>
+        <div id="presetCardBtns" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+      </div>
+
+      <!-- 직접 추가 -->
+      <div>
+        <div style="font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">직접 추가</div>
+        <div style="display:flex;gap:8px">
+          <input type="text" id="customCardInput" placeholder="예: 체크카드, 기업카드" maxlength="20" style="
+            flex:1;padding:10px 12px;background:var(--surface2);
+            border:1px solid var(--border2);border-radius:9px;
+            color:var(--text);font-size:14px;outline:none;
+            transition:border-color .15s;
+          ">
+          <button id="btnAddCustomCard" style="
+            padding:10px 16px;background:var(--indigo);color:#fff;
+            border-radius:9px;font-size:13px;font-weight:700;
+            border:none;cursor:pointer;white-space:nowrap;flex-shrink:0;
+          ">추가</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 계정 -->
+  <div class="section">
+    <div class="section-title">계정</div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:3px">로그인 계정</div>
+        <div style="font-size:14px;font-weight:500" id="settingsEmail">-</div>
+      </div>
+      <button id="btnLogout" style="
+        padding:8px 14px;background:var(--surface2);
+        border:1px solid var(--border2);border-radius:9px;
+        color:var(--text3);font-size:13px;font-weight:600;cursor:pointer;
+      ">로그아웃</button>
+    </div>
+  </div>
+
+</div>
+
 <!-- ════ 로그인 화면 ════ -->
 <div id="loginScreen" style="
   position:fixed;inset:0;background:var(--bg);z-index:999;
@@ -725,20 +786,23 @@ async function initAuth(){
     currentUser = session.user;
     hideLogin();
     updateMonthLabel();
+    await loadUserCards();
     loadExpenses();
   } else {
     showLogin();
   }
 
   // 세션 변화 감지
-  supa.auth.onAuthStateChange((_event, session)=>{
+  supa.auth.onAuthStateChange(async (_event, session)=>{
     if(session?.user){
       currentUser = session.user;
       hideLogin();
       updateMonthLabel();
+      await loadUserCards();
       loadExpenses();
     } else {
       currentUser = null;
+      userCards = [];
       showLogin();
     }
   });
@@ -804,11 +868,14 @@ document.getElementById('btnSignup').addEventListener('click', ()=> doAuth('sign
   });
 });
 
-// 로그아웃
-document.getElementById('btnLogout').addEventListener('click', async ()=>{
-  if(!confirm('로그아웃 할까요?')) return;
-  await supa.auth.signOut();
-  expenses = [];
+// 로그아웃 (설정탭 버튼 — 동적 렌더 후 이벤트 위임)
+document.getElementById('tab-settings').addEventListener('click', async e=>{
+  if(e.target.id === 'btnLogout'){
+    if(!confirm('로그아웃 할까요?')) return;
+    await supa.auth.signOut();
+    expenses = [];
+    userCards = [];
+  }
 });
 
 // 앱 시작
@@ -823,6 +890,14 @@ let inputType = 'expense'; // 'expense' | 'income'
 let historyFilterCat = '전체'; // 내역탭 필터
 let expenses = []; // 현재 월 전체 내역 캐시 (지출+수입)
 let stmtItems = []; // 명세서 파싱 결과
+let userCards = []; // 사용자 등록 카드 목록 [{id, name}]
+
+const PRESET_CARDS = [
+  '신한카드','KB국민카드','현대카드','삼성카드','비씨카드',
+  '롯데카드','하나카드','우리카드','NH농협카드','씨티카드',
+  '카카오페이','토스페이','SC제일카드','IBK기업카드',
+  '현대체크','삼성체크','신한체크','카카오뱅크'
+];
 
 const CAT_COLORS = {
   '식비':        '#f97316',
@@ -891,6 +966,7 @@ document.querySelectorAll('.tab').forEach(btn=>{
     document.getElementById('tab-'+tab).classList.remove('hidden');
     if(tab==='history') renderHistory();
     if(tab==='analysis') renderAnalysis();
+    if(tab==='settings') renderSettings();
   });
 });
 
@@ -1296,6 +1372,111 @@ async function renderAnalysis(){
       </div>`;
   }
 }
+
+// ══════════════════════════════════════════════════════════
+// 카드 관리
+// ══════════════════════════════════════════════════════════
+async function loadUserCards(){
+  if(!currentUser) return;
+  const { data } = await supa.from('user_cards')
+    .select('*').eq('user_id', currentUser.id)
+    .order('created_at', {ascending:true});
+  userCards = data || [];
+  updateCardSelect();
+}
+
+function updateCardSelect(){
+  const sel = document.getElementById('inCard');
+  const prev = sel.value;
+  sel.innerHTML = '';
+  userCards.forEach(c=>{
+    const o = document.createElement('option');
+    o.value = c.name; o.textContent = c.name;
+    sel.appendChild(o);
+  });
+  // 현금은 항상 마지막
+  const cash = document.createElement('option');
+  cash.value = '현금'; cash.textContent = '현금';
+  sel.appendChild(cash);
+  // 이전 선택 복원
+  if([...sel.options].some(o=>o.value===prev)) sel.value = prev;
+  // 할부 가시성 갱신
+  const card = sel.value;
+  if(inputType==='expense'){
+    document.getElementById('installmentGroup').classList.toggle('hidden', card==='현금');
+  }
+}
+
+async function addCard(name){
+  name = name.trim();
+  if(!name){ showToast('카드 이름을 입력해주세요', 'error'); return; }
+  if(userCards.some(c=>c.name===name)){ showToast('이미 추가된 카드입니다', 'error'); return; }
+  const { error } = await supa.from('user_cards').insert({ name, user_id: currentUser.id });
+  if(error){ showToast('추가 실패: '+error.message, 'error'); return; }
+  await loadUserCards();
+  renderSettings();
+  showToast('💳 '+name+' 추가됐습니다', 'success');
+}
+
+async function removeCard(id){
+  if(!confirm('카드를 삭제할까요?')) return;
+  const { error } = await supa.from('user_cards').delete().eq('id', id);
+  if(error){ showToast('삭제 실패', 'error'); return; }
+  await loadUserCards();
+  renderSettings();
+  showToast('삭제됐습니다');
+}
+
+function renderSettings(){
+  if(!currentUser) return;
+
+  // 이메일
+  document.getElementById('settingsEmail').textContent = currentUser.email;
+
+  // 등록된 카드 목록
+  const listEl = document.getElementById('myCardsList');
+  if(!userCards.length){
+    listEl.innerHTML = `<div style="font-size:13px;color:var(--text3);padding:4px 0">아래에서 카드를 추가해주세요</div>`;
+  } else {
+    listEl.innerHTML = userCards.map(c=>`
+      <div style="display:flex;align-items:center;justify-content:space-between;
+        padding:9px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:14px;font-weight:500">💳 ${c.name}</span>
+        <button onclick="removeCard('${c.id}')" style="
+          font-size:11px;color:var(--red);background:var(--red-dim);
+          border:1px solid rgba(239,68,68,.3);border-radius:6px;
+          padding:4px 10px;cursor:pointer;font-weight:600;
+        ">삭제</button>
+      </div>`).join('');
+  }
+
+  // 프리셋 버튼 (이미 추가된 건 제외)
+  const added = userCards.map(c=>c.name);
+  const remaining = PRESET_CARDS.filter(n=>!added.includes(n));
+  const presetsEl = document.getElementById('presetCardBtns');
+  if(!remaining.length){
+    presetsEl.innerHTML = `<div style="font-size:12px;color:var(--text3)">모든 주요 카드사가 추가됐습니다 ✓</div>`;
+  } else {
+    presetsEl.innerHTML = remaining.map(name=>`
+      <button onclick="addCard('${name}')" style="
+        padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;
+        border:1px solid var(--border2);color:var(--text2);
+        background:var(--surface2);cursor:pointer;transition:all .15s;
+      ">+ ${name}</button>`).join('');
+  }
+}
+
+// 직접 추가 버튼
+document.getElementById('btnAddCustomCard').addEventListener('click', ()=>{
+  const input = document.getElementById('customCardInput');
+  addCard(input.value).then(()=>{ input.value=''; });
+});
+document.getElementById('customCardInput').addEventListener('keydown', e=>{
+  if(e.key==='Enter'){
+    const input = document.getElementById('customCardInput');
+    addCard(input.value).then(()=>{ input.value=''; });
+  }
+});
 
 // ══════════════════════════════════════════════════════════
 // 명세서 파싱
