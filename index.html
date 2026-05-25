@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- physico-wallet v2.4 -->
+<!-- physico-wallet v2.5 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -391,6 +391,19 @@ input,select,textarea{font-family:inherit}
 .sell-badge{font-size:11px;font-weight:700;padding:2px 8px;border-radius:5px;background:rgba(239,68,68,.12);color:var(--red);border:1px solid rgba(239,68,68,.3)}
 .profit-pos{color:var(--green)}
 .profit-neg{color:var(--red)}
+
+/* ─── 잠금 화면 ─── */
+.pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--border2);background:transparent;transition:all .15s;flex-shrink:0}
+.pin-dot.filled{background:var(--indigo);border-color:var(--indigo);transform:scale(1.1)}
+.pin-key{
+  aspect-ratio:1;width:100%;border-radius:50%;
+  background:var(--surface2);border:1px solid var(--border);
+  color:var(--text);font-size:22px;font-weight:500;
+  cursor:pointer;transition:transform .1s,background .1s;
+  display:flex;align-items:center;justify-content:center;
+}
+.pin-key:active{transform:scale(.86);background:var(--surface3)}
+.pin-key.dim{opacity:.3;pointer-events:none}
 </style>
 </head>
 <body>
@@ -422,21 +435,21 @@ input,select,textarea{font-family:inherit}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>
       내역
     </button>
-    <button class="tab" data-tab="reconcile">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-      대조
+    <button class="tab" data-tab="invest">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+      재테크
     </button>
     <button class="tab" data-tab="analysis">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
       분석
     </button>
+    <button class="tab" data-tab="reconcile">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+      대조
+    </button>
     <button class="tab" data-tab="settings">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
       설정
-    </button>
-    <button class="tab" data-tab="invest">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
-      재테크
     </button>
   </div>
 </div>
@@ -827,6 +840,14 @@ input,select,textarea{font-family:inherit}
     </div>
   </div>
 
+  <!-- 앱 잠금 -->
+  <div class="section">
+    <div class="section-title">앱 잠금</div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px">
+      <div id="lockSettingsSection"></div>
+    </div>
+  </div>
+
   <!-- 계정 -->
   <div class="section">
     <div class="section-title">계정</div>
@@ -923,6 +944,47 @@ input,select,textarea{font-family:inherit}
     </div>
   </div>
 
+</div>
+
+<!-- ════ 잠금 화면 ════ -->
+<div id="lockScreen" style="
+  position:fixed;inset:0;background:var(--bg);z-index:998;
+  display:none;flex-direction:column;align-items:center;justify-content:center;
+  padding:0 32px;
+  padding-top:calc(40px + env(safe-area-inset-top));
+  padding-bottom:calc(24px + env(safe-area-inset-bottom));
+">
+  <div style="font-size:46px;margin-bottom:14px">🔒</div>
+  <div style="font-size:20px;font-weight:800;letter-spacing:-.5px;margin-bottom:6px">Physico Wallet</div>
+  <div style="font-size:13px;color:var(--text3);margin-bottom:36px" id="lockSubtitle">PIN 번호를 입력해주세요</div>
+
+  <!-- PIN 도트 6개 -->
+  <div style="display:flex;gap:16px;margin-bottom:10px" id="pinDots">
+    <div class="pin-dot" id="pd0"></div><div class="pin-dot" id="pd1"></div>
+    <div class="pin-dot" id="pd2"></div><div class="pin-dot" id="pd3"></div>
+    <div class="pin-dot" id="pd4"></div><div class="pin-dot" id="pd5"></div>
+  </div>
+  <div id="pinError" style="font-size:12px;color:var(--red);height:20px;margin-bottom:24px;text-align:center"></div>
+
+  <!-- 숫자 패드 -->
+  <div style="display:grid;grid-template-columns:repeat(3,72px);gap:10px;margin-bottom:28px" id="pinPad">
+    <button class="pin-key" data-k="1">1</button>
+    <button class="pin-key" data-k="2">2</button>
+    <button class="pin-key" data-k="3">3</button>
+    <button class="pin-key" data-k="4">4</button>
+    <button class="pin-key" data-k="5">5</button>
+    <button class="pin-key" data-k="6">6</button>
+    <button class="pin-key" data-k="7">7</button>
+    <button class="pin-key" data-k="8">8</button>
+    <button class="pin-key" data-k="9">9</button>
+    <button class="pin-key dim" data-k="bio" id="bioPinBtn" style="font-size:24px">👁️</button>
+    <button class="pin-key" data-k="0">0</button>
+    <button class="pin-key" data-k="del" style="font-size:20px">⌫</button>
+  </div>
+
+  <button onclick="lockLogout()" style="font-size:12px;color:var(--text3);background:none;border:none;cursor:pointer;padding:10px">
+    다른 계정으로 로그인
+  </button>
 </div>
 
 <!-- ════ 로그인 화면 ════ -->
@@ -1160,6 +1222,216 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
 
 // ══════════════════════════════════════════════════════════
+// 앱 잠금 (PIN + 생체인식)
+// ══════════════════════════════════════════════════════════
+const LS_LOCK = 'pw_lock', LS_PIN = 'pw_pin', LS_BIO = 'pw_bio', LS_BIOCID = 'pw_bio_cid';
+let lockInput = '', lockMode = 'unlock', pendingPin = '', lockFails = 0, lastHiddenAt = 0;
+
+const isLockOn  = () => localStorage.getItem(LS_LOCK)  === '1';
+const isPinSet  = () => !!localStorage.getItem(LS_PIN);
+const isBioOn   = () => localStorage.getItem(LS_BIO)   === '1';
+
+async function hashPin(pin){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('pw-salt:'+pin));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+function showLock(){
+  lockMode = 'unlock'; lockInput = ''; lockFails = 0;
+  resetPinDots();
+  document.getElementById('lockSubtitle').textContent = 'PIN 번호를 입력해주세요';
+  document.getElementById('pinError').textContent = '';
+  // 생체인식 버튼 표시 여부
+  const bioBtn = document.getElementById('bioPinBtn');
+  if(isBioOn()){ bioBtn.classList.remove('dim'); }
+  else { bioBtn.classList.add('dim'); }
+  document.getElementById('lockScreen').style.display = 'flex';
+  if(isBioOn()) setTimeout(tryBiometric, 500);
+}
+function hideLock(){ document.getElementById('lockScreen').style.display = 'none'; }
+
+function resetPinDots(){
+  lockInput = '';
+  for(let i=0;i<6;i++) document.getElementById('pd'+i)?.classList.remove('filled');
+}
+
+// 숫자패드 탭
+document.getElementById('pinPad').addEventListener('click', e=>{
+  const btn = e.target.closest('.pin-key');
+  if(!btn) return;
+  onPinKey(btn.dataset.k);
+});
+
+async function onPinKey(k){
+  if(k==='bio'){ tryBiometric(); return; }
+  if(k==='del'){
+    if(lockInput.length>0){
+      lockInput = lockInput.slice(0,-1);
+      document.getElementById('pd'+lockInput.length)?.classList.remove('filled');
+    }
+    return;
+  }
+  if(lockInput.length>=6) return;
+  lockInput += k;
+  document.getElementById('pd'+(lockInput.length-1))?.classList.add('filled');
+  if(lockInput.length===6) setTimeout(handlePinComplete, 80);
+}
+
+async function handlePinComplete(){
+  if(lockMode==='setup'){
+    pendingPin = lockInput;
+    lockMode = 'setup-confirm';
+    document.getElementById('lockSubtitle').textContent = 'PIN을 한번 더 입력하세요';
+    setTimeout(resetPinDots, 300);
+  } else if(lockMode==='setup-confirm'){
+    if(lockInput===pendingPin){
+      const hash = await hashPin(lockInput);
+      localStorage.setItem(LS_PIN, hash);
+      localStorage.setItem(LS_LOCK, '1');
+      lockMode = 'unlock'; pendingPin = '';
+      hideLock();
+      renderSettings();
+      showToast('🔒 PIN이 설정됐습니다', 'success');
+    } else {
+      document.getElementById('pinError').textContent = 'PIN이 일치하지 않아요. 다시 설정해주세요';
+      lockMode = 'setup'; pendingPin = '';
+      document.getElementById('lockSubtitle').textContent = '새 PIN 번호를 입력하세요 (6자리)';
+      setTimeout(resetPinDots, 700);
+    }
+  } else {
+    // 잠금 해제 검증
+    const hash = await hashPin(lockInput);
+    if(hash === localStorage.getItem(LS_PIN)){
+      lockFails = 0; hideLock();
+    } else {
+      lockFails++;
+      if(lockFails>=5){
+        document.getElementById('pinError').textContent = '5회 실패 — 잠시 후 다시 시도하세요';
+        document.getElementById('pinPad').style.pointerEvents='none';
+        setTimeout(()=>{ document.getElementById('pinPad').style.pointerEvents=''; lockFails=0; resetPinDots(); document.getElementById('pinError').textContent=''; }, 30000);
+      } else {
+        document.getElementById('pinError').textContent = `틀렸습니다 (${lockFails}/5)`;
+        setTimeout(resetPinDots, 600);
+      }
+    }
+  }
+}
+
+async function tryBiometric(){
+  const cidStr = localStorage.getItem(LS_BIOCID);
+  if(!cidStr || !window.PublicKeyCredential) return;
+  try {
+    const idBytes = Uint8Array.from(atob(cidStr), c=>c.charCodeAt(0));
+    const result  = await navigator.credentials.get({
+      publicKey:{
+        challenge: crypto.getRandomValues(new Uint8Array(32)),
+        allowCredentials:[{id:idBytes, type:'public-key', transports:['internal']}],
+        userVerification:'required', timeout:60000
+      }
+    });
+    if(result){ lockFails=0; hideLock(); }
+  } catch(e){ /* 취소 또는 실패 → PIN 입력으로 계속 */ }
+}
+
+async function registerBiometric(){
+  if(!window.PublicKeyCredential){ showToast('이 기기는 생체인식을 지원하지 않습니다', 'error'); return false; }
+  const avail = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable().catch(()=>false);
+  if(!avail){ showToast('생체인식 인증기가 없습니다', 'error'); return false; }
+  try {
+    const credential = await navigator.credentials.create({ publicKey:{
+      challenge: crypto.getRandomValues(new Uint8Array(32)),
+      rp:{ name:'Physico Wallet', id:location.hostname },
+      user:{ id:new TextEncoder().encode(currentUser?.id||'user'), name:currentUser?.email||'user', displayName:'Wallet' },
+      pubKeyCredParams:[{alg:-7,type:'public-key'},{alg:-257,type:'public-key'}],
+      authenticatorSelection:{ authenticatorAttachment:'platform', userVerification:'required', residentKey:'required' },
+      timeout:60000
+    }});
+    localStorage.setItem(LS_BIOCID, btoa(String.fromCharCode(...new Uint8Array(credential.rawId))));
+    localStorage.setItem(LS_BIO, '1');
+    return true;
+  } catch(e){ showToast('생체인식 등록 실패: '+e.message, 'error'); return false; }
+}
+
+function openPinSetup(){
+  lockMode = 'setup'; lockInput = ''; pendingPin = '';
+  resetPinDots();
+  document.getElementById('pinError').textContent = '';
+  document.getElementById('lockSubtitle').textContent = '새 PIN 번호를 입력하세요 (6자리)';
+  document.getElementById('bioPinBtn').classList.add('dim');
+  document.getElementById('lockScreen').style.display = 'flex';
+}
+
+async function toggleLock(){
+  if(!isLockOn()){ openPinSetup(); }
+  else {
+    localStorage.removeItem(LS_LOCK); localStorage.removeItem(LS_PIN);
+    localStorage.removeItem(LS_BIO);  localStorage.removeItem(LS_BIOCID);
+    renderSettings(); showToast('앱 잠금이 해제됐습니다');
+  }
+}
+async function toggleBio(){
+  if(isBioOn()){
+    localStorage.removeItem(LS_BIO); localStorage.removeItem(LS_BIOCID);
+    renderSettings(); showToast('생체인식 해제됐습니다');
+  } else {
+    const ok = await registerBiometric();
+    if(ok){ renderSettings(); showToast('생체인식 등록됐습니다 ✅', 'success'); }
+  }
+}
+function lockLogout(){
+  if(!confirm('로그아웃할까요?')) return;
+  hideLock();
+  localStorage.removeItem(LS_LOCK); localStorage.removeItem(LS_PIN);
+  localStorage.removeItem(LS_BIO);  localStorage.removeItem(LS_BIOCID);
+  supa.auth.signOut();
+}
+
+// 백그라운드 → 포그라운드 시 자동 잠금 (1분 이상 자리 비운 경우)
+document.addEventListener('visibilitychange', ()=>{
+  if(document.hidden){ lastHiddenAt = Date.now(); }
+  else if(isLockOn() && isPinSet() && currentUser){
+    if(lastHiddenAt>0 && Date.now()-lastHiddenAt > 60000) showLock();
+  }
+});
+
+function renderLockSettings(){
+  const on = isLockOn();
+  const bioAvail = !!window.PublicKeyCredential;
+  document.getElementById('lockSettingsSection').innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;${on?'padding-bottom:12px;border-bottom:1px solid var(--border)':''}">
+      <div>
+        <div style="font-size:14px;font-weight:600">잠금 사용</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">앱 열 때 PIN · 생체인식 요구</div>
+      </div>
+      <button onclick="toggleLock()" style="
+        width:46px;height:28px;border-radius:14px;border:none;cursor:pointer;position:relative;
+        background:${on?'var(--green)':'var(--surface3)'};transition:background .2s;
+      "><div style="
+        width:22px;height:22px;border-radius:50%;background:#fff;
+        position:absolute;top:3px;left:${on?'21px':'3px'};transition:left .2s;
+      "></div></button>
+    </div>
+    ${on ? `
+    <div style="padding:12px 0;${bioAvail?'border-bottom:1px solid var(--border)':''}">
+      <button onclick="openPinSetup()" style="
+        width:100%;padding:11px 14px;background:var(--surface2);
+        border:1px solid var(--border2);border-radius:9px;
+        color:var(--text);font-size:14px;font-weight:600;cursor:pointer;text-align:left;
+      ">🔑 PIN 번호 ${isPinSet()?'변경':'설정'}</button>
+    </div>
+    ${bioAvail ? `
+    <div style="padding-top:12px">
+      <button onclick="toggleBio()" style="
+        width:100%;padding:11px 14px;background:var(--surface2);
+        border:1px solid var(--border2);border-radius:9px;
+        color:${isBioOn()?'var(--green)':'var(--text)'};font-size:14px;font-weight:600;cursor:pointer;text-align:left;
+      ">${isBioOn()?'✅ 생체인식 사용 중 (탭하면 해제)':'👁️ 얼굴 인식 / 지문 등록'}</button>
+    </div>` : `
+    <div style="padding-top:10px;font-size:12px;color:var(--text3)">⚠️ 이 기기는 생체인식을 지원하지 않습니다</div>`}` : ''}
+  `;
+}
+
+// ══════════════════════════════════════════════════════════
 // 인증
 // ══════════════════════════════════════════════════════════
 let currentUser = null;
@@ -1167,33 +1439,35 @@ let currentUser = null;
 function showLogin(){ document.getElementById('loginScreen').style.display='flex'; }
 function hideLogin(){ document.getElementById('loginScreen').style.display='none'; }
 
+async function afterLogin(){
+  updateMonthLabel();
+  await loadUserCards();
+  await loadRecurringExpenses();
+  loadExpenses();
+  // 잠금이 설정되어 있으면 잠금 화면 표시
+  if(isLockOn() && isPinSet()) showLock();
+}
+
 async function initAuth(){
-  // 기존 세션 확인
   const { data:{ session } } = await supa.auth.getSession();
   if(session?.user){
     currentUser = session.user;
     hideLogin();
-    updateMonthLabel();
-    await loadUserCards();
-    await loadRecurringExpenses();
-    loadExpenses();
+    afterLogin();
   } else {
     showLogin();
   }
 
-  // 세션 변화 감지
   supa.auth.onAuthStateChange(async (_event, session)=>{
     if(session?.user){
       currentUser = session.user;
       hideLogin();
-      updateMonthLabel();
-      await loadUserCards();
-      await loadRecurringExpenses();
-      loadExpenses();
+      afterLogin();
     } else {
       currentUser = null;
       userCards = [];
       recurringExpenses = [];
+      hideLock();
       showLogin();
     }
   });
@@ -1975,6 +2249,9 @@ function renderSettings(){
 
   // 이메일
   document.getElementById('settingsEmail').textContent = currentUser.email;
+
+  // 앱 잠금 설정 렌더
+  renderLockSettings();
 
   // 고정 지출 렌더
   renderRecurringSettings();
