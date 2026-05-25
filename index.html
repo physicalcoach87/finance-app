@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- physico-wallet v2.7 -->
+<!-- physico-wallet v2.8 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -2796,6 +2796,7 @@ function renderHoldings(){
       <div class="holding-row"><span>보유수량</span><span>${Number(h.quantity).toLocaleString()}주</span></div>
       <div class="holding-row"><span>평균단가</span><span>${fmt(h.avg_price)}</span></div>
       <div class="holding-row"><span>현재가</span><span class="price-tap" id="price-display-${h.id}" onclick="startPriceEdit('${h.id}',${h.current_price})">${fmt(h.current_price)}<span class="price-edit-hint">✏️</span></span></div>
+      <div class="holding-row" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)"><span>매수금액</span><span>${fmt(investAmt)}</span></div>
       <div class="holding-row"><span>평가금액</span><span>${fmt(evalAmt)}</span></div>
       <div class="holding-profit ${pCls}">
         평가손익 ${pSign}${fmt(profit)} <span style="font-size:13px;font-weight:500">(${pSign}${pct.toFixed(1)}%)</span>
