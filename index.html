@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- physico-wallet v1.9 -->
+<!-- physico-wallet v2.0 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -210,7 +210,13 @@ input,select,textarea{font-family:inherit}
 .matched-badge{font-size:10px;padding:2px 6px;border-radius:4px;background:var(--green-dim);color:var(--green);font-weight:600}
 .unmatched-badge{font-size:10px;padding:2px 6px;border-radius:4px;background:var(--amber-dim);color:var(--amber);font-weight:600}
 .delete-btn{width:28px;height:28px;border-radius:7px;background:var(--red-dim);color:var(--red);font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;opacity:0;transition:opacity .15s}
-.expense-item:hover .delete-btn{opacity:1}
+.edit-btn{width:28px;height:28px;border-radius:7px;background:var(--amber-dim);color:var(--amber);font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;opacity:0;transition:opacity .15s}
+.expense-item:hover .delete-btn,.expense-item:hover .edit-btn{opacity:1}
+.expense-item{cursor:pointer}
+/* 터치 기기에서는 항상 표시 */
+@media (hover:none){
+  .delete-btn,.edit-btn{opacity:1}
+}
 
 /* 날짜 구분선 */
 .date-divider{font-size:12px;color:var(--text3);font-weight:600;padding:10px 0 4px;display:flex;align-items:center;gap:8px}
@@ -872,6 +878,104 @@ input,select,textarea{font-family:inherit}
 <!-- 토스트 -->
 <div class="toast" id="toast"></div>
 
+<!-- 수정 모달 -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal" style="position:relative">
+    <button class="modal-close" id="btnEditClose">✕</button>
+    <div class="modal-title">내역 수정</div>
+
+    <!-- 지출/수입 토글 -->
+    <div style="display:flex;gap:6px;margin-bottom:12px">
+      <button id="editTypeExpense" style="flex:1;padding:9px;border-radius:9px;font-size:13px;font-weight:700;border:2px solid var(--red);background:rgba(239,68,68,.12);color:var(--red);transition:all .15s;">― 지출</button>
+      <button id="editTypeIncome"  style="flex:1;padding:9px;border-radius:9px;font-size:13px;font-weight:700;border:2px solid var(--border2);background:var(--surface2);color:var(--text3);transition:all .15s;">+ 수입</button>
+    </div>
+
+    <!-- 날짜 + 결제수단 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+      <div class="form-group">
+        <label>날짜</label>
+        <input type="date" id="editDate">
+      </div>
+      <div class="form-group" id="editCardGroup">
+        <label>결제 수단</label>
+        <select id="editCard"></select>
+      </div>
+      <div class="form-group hidden" id="editSourceGroup">
+        <label>수입원</label>
+        <select id="editSource">
+          <option value="급여">급여</option>
+          <option value="부수입">부수입</option>
+          <option value="이자/배당">이자/배당</option>
+          <option value="환급">환급/환전</option>
+          <option value="기타">기타</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- 할부 -->
+    <div class="form-group hidden" id="editInstallmentGroup" style="margin-bottom:10px">
+      <label>할부</label>
+      <div class="install-chips" id="editInstallmentChips">
+        <button class="install-chip active" data-val="0">일시불</button>
+        <button class="install-chip" data-val="2">2개월</button>
+        <button class="install-chip" data-val="3">3개월</button>
+        <button class="install-chip" data-val="4">4개월</button>
+        <button class="install-chip" data-val="5">5개월</button>
+        <button class="install-chip" data-val="6">6개월</button>
+        <button class="install-chip" data-val="7">7개월</button>
+        <button class="install-chip" data-val="8">8개월</button>
+        <button class="install-chip" data-val="9">9개월</button>
+        <button class="install-chip" data-val="10">10개월</button>
+        <button class="install-chip" data-val="11">11개월</button>
+        <button class="install-chip" data-val="12">12개월</button>
+        <button class="install-chip" data-val="24">24개월</button>
+        <button class="install-chip" data-val="36">36개월</button>
+      </div>
+    </div>
+
+    <!-- 금액 -->
+    <div class="form-group" style="margin-bottom:10px">
+      <label>금액</label>
+      <div class="amount-unit">
+        <input type="number" id="editAmount" class="amount-input" min="0" inputmode="numeric">
+      </div>
+    </div>
+
+    <!-- 가맹점 -->
+    <div class="form-group" style="margin-bottom:10px">
+      <label id="editMerchantLabel">가맹점 / 내역</label>
+      <input type="text" id="editMerchant">
+    </div>
+
+    <!-- 카테고리 -->
+    <div class="form-group hidden" id="editCatGroup" style="margin-bottom:10px">
+      <label>카테고리</label>
+      <div class="cat-chips" id="editCatChips">
+        <button class="cat-chip" data-cat="식비">🍚 식비</button>
+        <button class="cat-chip" data-cat="교통/주유">⛽ 교통/주유</button>
+        <button class="cat-chip" data-cat="의료/뷰티">💊 의료/뷰티</button>
+        <button class="cat-chip" data-cat="구독">📱 구독</button>
+        <button class="cat-chip" data-cat="쇼핑">🛍️ 쇼핑</button>
+        <button class="cat-chip" data-cat="여행">✈️ 여행</button>
+        <button class="cat-chip" data-cat="고정비">🔒 고정비</button>
+        <button class="cat-chip" data-cat="보험">🛡️ 보험</button>
+        <button class="cat-chip" data-cat="대출/금융">🏦 대출/금융</button>
+        <button class="cat-chip" data-cat="모임/회비">🤝 모임/회비</button>
+        <button class="cat-chip" data-cat="취미/레저">🎯 취미/레저</button>
+        <button class="cat-chip" data-cat="기타">📦 기타</button>
+      </div>
+    </div>
+
+    <!-- 메모 -->
+    <div class="form-group" style="margin-bottom:16px">
+      <label>메모 (선택)</label>
+      <input type="text" id="editMemo" placeholder="특이사항 등">
+    </div>
+
+    <button class="btn-save" id="btnEditSave" style="background:var(--amber)">수정 저장</button>
+  </div>
+</div>
+
 
 <script>
 // ══════════════════════════════════════════════════════════
@@ -1366,6 +1470,7 @@ function expenseItemHTML(e){
       </div>
     </div>
     <div class="expense-amount" style="${amtColor}">${amtSign}${fmt(e.amount)}</div>
+    <button class="edit-btn" data-id="${e.id}">✏️</button>
     <button class="delete-btn" data-id="${e.id}">✕</button>
   </div>`;
 }
@@ -1382,7 +1487,150 @@ function bindDeleteButtons(container){
       loadExpenses();
     });
   });
+  container.querySelectorAll('.edit-btn').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      const item = expenses.find(ex=>ex.id===id);
+      if(item) openEditModal(item);
+    });
+  });
 }
+
+// ══════════════════════════════════════════════════════════
+// 수정 모달
+// ══════════════════════════════════════════════════════════
+let editingId = null;
+let editType = 'expense';
+let editSelectedCat = '';
+let editSelectedInstallment = 0;
+
+function openEditModal(item){
+  editingId = item.id;
+  editType = item.is_income ? 'income' : 'expense';
+  editSelectedCat = item.category;
+  editSelectedInstallment = item.installment || 0;
+
+  // 폼 채우기
+  document.getElementById('editDate').value = item.date;
+  document.getElementById('editAmount').value = item.amount;
+  document.getElementById('editMerchant').value = item.merchant;
+  document.getElementById('editMemo').value = item.memo || '';
+
+  // 카드 옵션 채우기
+  const cardSel = document.getElementById('editCard');
+  cardSel.innerHTML = '';
+  userCards.forEach(c=>{
+    const o = document.createElement('option');
+    o.value = c.name; o.textContent = c.name; cardSel.appendChild(o);
+  });
+  const cash = document.createElement('option');
+  cash.value='현금'; cash.textContent='현금'; cardSel.appendChild(cash);
+
+  // 지출/수입 토글
+  setEditType(editType);
+
+  if(!item.is_income){
+    cardSel.value = item.card || '현금';
+    // 할부 칩
+    document.querySelectorAll('#editInstallmentChips .install-chip').forEach(c=>{
+      c.classList.toggle('active', parseInt(c.dataset.val)===editSelectedInstallment);
+    });
+    // 카테고리 칩
+    document.querySelectorAll('#editCatChips .cat-chip').forEach(c=>{
+      c.classList.toggle('active', c.dataset.cat===editSelectedCat);
+    });
+  } else {
+    document.getElementById('editSource').value = item.card || '급여';
+  }
+
+  document.getElementById('editModal').classList.add('open');
+}
+
+function setEditType(type){
+  editType = type;
+  const isExpense = type==='expense';
+  const btnE = document.getElementById('editTypeExpense');
+  const btnI = document.getElementById('editTypeIncome');
+  if(isExpense){
+    btnE.style.borderColor='var(--red)'; btnE.style.background='rgba(239,68,68,.12)'; btnE.style.color='var(--red)';
+    btnI.style.borderColor='var(--border2)'; btnI.style.background='var(--surface2)'; btnI.style.color='var(--text3)';
+  } else {
+    btnI.style.borderColor='var(--green)'; btnI.style.background='rgba(34,197,94,.12)'; btnI.style.color='var(--green)';
+    btnE.style.borderColor='var(--border2)'; btnE.style.background='var(--surface2)'; btnE.style.color='var(--text3)';
+  }
+  document.getElementById('editCatGroup').classList.toggle('hidden', !isExpense);
+  document.getElementById('editCardGroup').classList.toggle('hidden', !isExpense);
+  document.getElementById('editSourceGroup').classList.toggle('hidden', isExpense);
+  document.getElementById('editMerchantLabel').textContent = isExpense ? '가맹점 / 내역' : '수입 내역';
+  const card = document.getElementById('editCard').value;
+  document.getElementById('editInstallmentGroup').classList.toggle('hidden', !isExpense || card==='현금');
+}
+
+document.getElementById('editTypeExpense').addEventListener('click', ()=>setEditType('expense'));
+document.getElementById('editTypeIncome').addEventListener('click',  ()=>setEditType('income'));
+
+document.getElementById('editCard').addEventListener('change', ()=>{
+  const card = document.getElementById('editCard').value;
+  document.getElementById('editInstallmentGroup').classList.toggle('hidden', card==='현금');
+});
+
+document.querySelectorAll('#editCatChips .cat-chip').forEach(chip=>{
+  chip.addEventListener('click', ()=>{
+    document.querySelectorAll('#editCatChips .cat-chip').forEach(c=>c.classList.remove('active'));
+    chip.classList.add('active');
+    editSelectedCat = chip.dataset.cat;
+  });
+});
+
+document.querySelectorAll('#editInstallmentChips .install-chip').forEach(chip=>{
+  chip.addEventListener('click', ()=>{
+    document.querySelectorAll('#editInstallmentChips .install-chip').forEach(c=>c.classList.remove('active'));
+    chip.classList.add('active');
+    editSelectedInstallment = parseInt(chip.dataset.val)||0;
+  });
+});
+
+function closeEditModal(){
+  document.getElementById('editModal').classList.remove('open');
+  editingId = null;
+}
+document.getElementById('btnEditClose').addEventListener('click', closeEditModal);
+document.getElementById('editModal').addEventListener('click', e=>{
+  if(e.target===document.getElementById('editModal')) closeEditModal();
+});
+
+document.getElementById('btnEditSave').addEventListener('click', async ()=>{
+  const btn = document.getElementById('btnEditSave');
+  const date     = document.getElementById('editDate').value;
+  const amount   = parseInt(document.getElementById('editAmount').value);
+  const merchant = document.getElementById('editMerchant').value.trim();
+  const memo     = document.getElementById('editMemo').value.trim();
+  const isIncome = editType==='income';
+  const card     = isIncome ? document.getElementById('editSource').value : document.getElementById('editCard').value;
+  const category = isIncome ? '수입' : editSelectedCat;
+  const installment = isIncome ? 0 : editSelectedInstallment;
+
+  if(!date||!amount||!merchant){ showToast('날짜, 금액, 내역을 입력해주세요','error'); return; }
+  if(!isIncome && !editSelectedCat){ showToast('카테고리를 선택해주세요','error'); return; }
+
+  btn.disabled=true; btn.textContent='저장 중...';
+  try {
+    const { error } = await supa.from('expenses').update({
+      date, amount, merchant, category,
+      card: isIncome ? null : card,
+      installment, memo: memo||null, is_income: isIncome
+    }).eq('id', editingId);
+    if(error) throw new Error(error.message);
+    showToast('✅ 수정됐습니다', 'success');
+    closeEditModal();
+    loadExpenses();
+  } catch(e){
+    showToast('수정 실패: '+e.message, 'error');
+  } finally {
+    btn.disabled=false; btn.textContent='수정 저장';
+  }
+});
 
 // ══════════════════════════════════════════════════════════
 // 분석 탭 렌더
