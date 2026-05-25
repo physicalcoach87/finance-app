@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- physico-wallet v1.8 -->
+<!-- physico-wallet v1.9 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -521,6 +521,7 @@ input,select,textarea{font-family:inherit}
           <button class="cat-chip" data-cat="보험">🛡️ 보험</button>
           <button class="cat-chip" data-cat="대출/금융">🏦 대출/금융</button>
           <button class="cat-chip" data-cat="모임/회비">🤝 모임/회비</button>
+          <button class="cat-chip" data-cat="취미/레저">🎯 취미/레저</button>
           <button class="cat-chip" data-cat="기타">📦 기타</button>
         </div>
       </div>
@@ -586,6 +587,7 @@ input,select,textarea{font-family:inherit}
     <button class="filter-chip" data-cat="보험">🛡️ 보험</button>
     <button class="filter-chip" data-cat="대출/금융">🏦 대출/금융</button>
     <button class="filter-chip" data-cat="모임/회비">🤝 모임/회비</button>
+    <button class="filter-chip" data-cat="취미/레저">🎯 취미/레저</button>
     <button class="filter-chip" data-cat="기타">📦 기타</button>
   </div>
 
@@ -733,6 +735,7 @@ input,select,textarea{font-family:inherit}
             <option value="보험">🛡️ 보험</option>
             <option value="대출/금융">🏦 대출/금융</option>
             <option value="모임/회비">🤝 모임/회비</option>
+            <option value="취미/레저">🎯 취미/레저</option>
             <option value="구독">📱 구독</option>
             <option value="교통/주유">⛽ 교통/주유</option>
             <option value="의료/뷰티">💊 의료/뷰티</option>
@@ -1021,12 +1024,13 @@ const CAT_COLORS = {
   '보험':        '#0ea5e9',
   '대출/금융':   '#f43f5e',
   '모임/회비':   '#eab308',
+  '취미/레저':   '#10b981',
   '기타':        '#6b7280',
 };
 const CAT_ICONS = {
   '식비':'🍚','교통/주유':'⛽','의료/뷰티':'💊',
   '구독':'📱','쇼핑':'🛍️','여행':'✈️','고정비':'🔒',
-  '보험':'🛡️','대출/금융':'🏦','모임/회비':'🤝','기타':'📦',
+  '보험':'🛡️','대출/금융':'🏦','모임/회비':'🤝','취미/레저':'🎯','기타':'📦',
 };
 
 // ══════════════════════════════════════════════════════════
