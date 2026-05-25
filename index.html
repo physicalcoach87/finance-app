@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- physico-wallet v2.14 -->
+<!-- physico-wallet v2.15 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -1615,10 +1615,16 @@ function fmtCur(n, cur){
   if(cur === 'USD') return '$' + Number(n).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
   return Number(n).toLocaleString('ko-KR', {maximumFractionDigits:0}) + '원';
 }
+// USD 금액 → 정수면 소수 없이, 소수 있으면 최대 2자리
+function fmtUSD(n){
+  const v = Number(n);
+  const s = v.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:2});
+  return '$' + s;
+}
 // USD+KRW 같이 표시 ($12.34 ≈ 18,750원)
 function fmtBoth(n, cur){
   if(cur !== 'USD') return fmtCur(n, cur);
-  const usd = '$' + Number(n).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+  const usd = fmtUSD(n);
   const krw = Number(Math.round(n * fxUsdKrw)).toLocaleString('ko-KR') + '원';
   return `${usd} <span style="font-size:11px;color:var(--text3);font-weight:400">≈ ${krw}</span>`;
 }
