@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- physico-wallet v2.2 -->
+<!-- physico-wallet v2.3 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -2481,10 +2481,15 @@ function renderHoldings(){
     const pct       = investAmt > 0 ? (profit / investAmt * 100) : 0;
     const pCls      = profit > 0 ? 'profit-pos' : profit < 0 ? 'profit-neg' : '';
     const pSign     = profit > 0 ? '+' : '';
+    const naverUrl  = `https://search.naver.com/search.naver?query=${encodeURIComponent(h.name + ' 주가')}`;
     return `<div class="holding-card">
       <div class="holding-name">
         <span>${h.name}</span>
         <div style="display:flex;gap:6px">
+          <a href="${naverUrl}" target="_blank" rel="noopener" style="font-size:11px;padding:4px 10px;border-radius:6px;background:rgba(3,199,90,.1);color:#03c75a;border:1px solid rgba(3,199,90,.3);font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:3px">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M13.41 12l4.3-4.29a1 1 0 10-1.42-1.42L12 10.59l-4.29-4.3a1 1 0 00-1.42 1.42L10.59 12l-4.3 4.29a1 1 0 000 1.42 1 1 0 001.42 0L12 13.41l4.29 4.3a1 1 0 001.42 0 1 1 0 000-1.42z"/></svg>
+            N 시세
+          </a>
           <button onclick="openHoldingModal('${h.id}')" style="font-size:11px;padding:4px 10px;border-radius:6px;background:var(--amber-dim);color:var(--amber);border:1px solid rgba(245,158,11,.3);cursor:pointer;font-weight:600">수정</button>
           <button onclick="deleteHolding('${h.id}')" style="font-size:11px;padding:4px 10px;border-radius:6px;background:var(--red-dim);color:var(--red);border:1px solid rgba(239,68,68,.3);cursor:pointer;font-weight:600">삭제</button>
         </div>
