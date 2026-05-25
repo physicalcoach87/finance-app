@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- physico-wallet v2.3 -->
+<!-- physico-wallet v2.4 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -882,11 +882,18 @@ input,select,textarea{font-family:inherit}
   <div id="investHoldingsView">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
       <div style="font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.8px">보유종목</div>
-      <button onclick="openHoldingModal(null)" style="
-        font-size:12px;font-weight:700;padding:6px 12px;
-        background:var(--green);color:#fff;border-radius:8px;
-        border:none;cursor:pointer;
-      ">+ 종목 추가</button>
+      <div style="display:flex;gap:6px">
+        <button id="btnRefreshAll" onclick="refreshAllPrices()" style="
+          font-size:12px;font-weight:700;padding:6px 12px;
+          background:var(--surface2);color:var(--text2);border-radius:8px;
+          border:1px solid var(--border2);cursor:pointer;
+        ">🔄 시세 업데이트</button>
+        <button onclick="openHoldingModal(null)" style="
+          font-size:12px;font-weight:700;padding:6px 12px;
+          background:var(--green);color:#fff;border-radius:8px;
+          border:none;cursor:pointer;
+        ">+ 종목 추가</button>
+      </div>
     </div>
     <div id="holdingsList">
       <div class="empty-state">
@@ -1357,7 +1364,7 @@ document.querySelectorAll('.tab').forEach(btn=>{
     if(tab==='history') renderHistory();
     if(tab==='analysis') renderAnalysis();
     if(tab==='settings') renderSettings();
-    if(tab==='invest') loadStockData();
+    if(tab==='invest') loadStockData().then(()=> refreshAllPrices());
   });
 });
 
@@ -2485,13 +2492,11 @@ function renderHoldings(){
     return `<div class="holding-card">
       <div class="holding-name">
         <span>${h.name}</span>
-        <div style="display:flex;gap:6px">
-          <a href="${naverUrl}" target="_blank" rel="noopener" style="font-size:11px;padding:4px 10px;border-radius:6px;background:rgba(3,199,90,.1);color:#03c75a;border:1px solid rgba(3,199,90,.3);font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:3px">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M13.41 12l4.3-4.29a1 1 0 10-1.42-1.42L12 10.59l-4.29-4.3a1 1 0 00-1.42 1.42L10.59 12l-4.3 4.29a1 1 0 000 1.42 1 1 0 001.42 0L12 13.41l4.29 4.3a1 1 0 001.42 0 1 1 0 000-1.42z"/></svg>
-            N 시세
-          </a>
-          <button onclick="openHoldingModal('${h.id}')" style="font-size:11px;padding:4px 10px;border-radius:6px;background:var(--amber-dim);color:var(--amber);border:1px solid rgba(245,158,11,.3);cursor:pointer;font-weight:600">수정</button>
-          <button onclick="deleteHolding('${h.id}')" style="font-size:11px;padding:4px 10px;border-radius:6px;background:var(--red-dim);color:var(--red);border:1px solid rgba(239,68,68,.3);cursor:pointer;font-weight:600">삭제</button>
+        <div style="display:flex;gap:5px;align-items:center">
+          <button onclick="refreshOnePrice('${h.id}','${h.name}')" title="현재가 자동 조회" style="width:28px;height:28px;border-radius:7px;background:var(--surface2);color:var(--text2);border:1px solid var(--border2);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center" id="refresh-${h.id}">🔄</button>
+          <a href="${naverUrl}" target="_blank" rel="noopener" style="width:28px;height:28px;border-radius:7px;background:rgba(3,199,90,.1);color:#03c75a;border:1px solid rgba(3,199,90,.3);font-weight:700;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;font-size:12px">N</a>
+          <button onclick="openHoldingModal('${h.id}')" style="font-size:11px;padding:4px 9px;border-radius:6px;background:var(--amber-dim);color:var(--amber);border:1px solid rgba(245,158,11,.3);cursor:pointer;font-weight:600">수정</button>
+          <button onclick="deleteHolding('${h.id}')" style="font-size:11px;padding:4px 9px;border-radius:6px;background:var(--red-dim);color:var(--red);border:1px solid rgba(239,68,68,.3);cursor:pointer;font-weight:600">삭제</button>
         </div>
       </div>
       <div class="holding-row"><span>보유수량</span><span>${Number(h.quantity).toLocaleString()}주</span></div>
@@ -2717,6 +2722,106 @@ document.getElementById('btnTradeSave').addEventListener('click', async ()=>{
     btn.textContent = tradeTypeSelected==='buy' ? '📈 매수 기록' : '📉 매도 기록';
   }
 });
+
+// ─── 자동 시세 조회 ───
+async function fetchStockPrice(name) {
+  const ctrl = new AbortController();
+  const tid   = setTimeout(() => ctrl.abort(), 6000);
+
+  // 1. 네이버 자동완성으로 종목코드 탐색
+  try {
+    const acResp = await fetch(
+      `https://ac.stock.naver.com/ac?q=${encodeURIComponent(name)}&target=stock`,
+      { signal: ctrl.signal }
+    );
+    if (acResp.ok) {
+      const acData = await acResp.json();
+      // 응답 형식: { items: [[["005930","삼성전자","KOSPI",...],...]] }
+      const code = acData?.items?.[0]?.[0]?.[0];
+      if (code) {
+        // 네이버 polling API
+        try {
+          const pResp = await fetch(
+            `https://polling.finance.naver.com/api/realtime/domestic/stock/${code}`,
+            { signal: ctrl.signal }
+          );
+          if (pResp.ok) {
+            const pData = await pResp.json();
+            const price = parseInt((pData?.closePrice || '').replace(/,/g,''));
+            if (price > 0) { clearTimeout(tid); return price; }
+          }
+        } catch(e2) {}
+
+        // 야후 파이낸스 KOSPI 시도
+        for (const suffix of ['.KS', '.KQ']) {
+          try {
+            const yResp = await fetch(
+              `https://query1.finance.yahoo.com/v8/finance/chart/${code}${suffix}?interval=1d&range=1d`,
+              { signal: ctrl.signal }
+            );
+            if (yResp.ok) {
+              const yData = await yResp.json();
+              const price = yData?.chart?.result?.[0]?.meta?.regularMarketPrice;
+              if (price > 0) { clearTimeout(tid); return Math.round(price); }
+            }
+          } catch(e3) {}
+        }
+      }
+    }
+  } catch(e) {}
+
+  // 2. 미국주식 — 이름을 티커로 직접 시도 (AAPL, TSLA 등)
+  try {
+    const yResp = await fetch(
+      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(name)}?interval=1d&range=1d`,
+      { signal: ctrl.signal }
+    );
+    if (yResp.ok) {
+      const yData = await yResp.json();
+      const price = yData?.chart?.result?.[0]?.meta?.regularMarketPrice;
+      if (price > 0) { clearTimeout(tid); return Math.round(price); }
+    }
+  } catch(e) {}
+
+  clearTimeout(tid);
+  return null;
+}
+
+async function refreshOnePrice(id, name) {
+  const btn = document.getElementById(`refresh-${id}`);
+  if (btn) { btn.textContent = '⏳'; btn.disabled = true; }
+  const price = await fetchStockPrice(name);
+  if (btn) { btn.textContent = '🔄'; btn.disabled = false; }
+  if (!price) {
+    showToast(`${name} 시세 조회 실패 — N 버튼으로 수동 확인해주세요`, 'error'); return;
+  }
+  const { error } = await supa.from('stock_holdings').update({ current_price: price }).eq('id', id);
+  if (error) { showToast('업데이트 실패', 'error'); return; }
+  showToast(`${name}  ${fmt(price)} ✅`, 'success');
+  await loadHoldings();
+  renderInvest();
+}
+
+async function refreshAllPrices() {
+  if (!stockHoldings.length) return;
+  const btn = document.getElementById('btnRefreshAll');
+  if (btn) { btn.textContent = '⏳ 조회 중...'; btn.disabled = true; }
+  let ok = 0, fail = 0;
+  for (const h of stockHoldings) {
+    const price = await fetchStockPrice(h.name);
+    if (price) {
+      await supa.from('stock_holdings').update({ current_price: price }).eq('id', h.id);
+      ok++;
+    } else {
+      fail++;
+    }
+  }
+  if (btn) { btn.textContent = '🔄 시세 업데이트'; btn.disabled = false; }
+  await loadHoldings();
+  renderInvest();
+  if (ok > 0)   showToast(`${ok}개 시세 업데이트됐습니다 ✅`, 'success');
+  else          showToast(`자동 조회 실패 — N 버튼으로 확인해주세요`, 'error');
+}
 
 async function deleteTrade(id){
   if(!confirm('매매 내역을 삭제할까요?\n보유 수량은 자동으로 되돌아가지 않습니다.')) return;
