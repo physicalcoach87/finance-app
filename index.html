@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- physico-wallet v2.12 -->
+<!-- physico-wallet v2.13 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -1610,6 +1610,14 @@ const CAT_ICONS = {
 // 유틸
 // ══════════════════════════════════════════════════════════
 function fmt(n){ return Number(n).toLocaleString('ko-KR', {maximumFractionDigits:0}) + '원'; }
+// 통화별 표시 (KRW: 1,234원 / USD: $12.34)
+function fmtCur(n, cur){
+  if(cur === 'USD') return '$' + Number(n).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+  return Number(n).toLocaleString('ko-KR', {maximumFractionDigits:0}) + '원';
+}
+// 원화 환산 (요약 합계용)
+function toKRW(val, cur){ return cur === 'USD' ? val * fxUsdKrw : val; }
+function currencyOf(name){ const h = stockHoldings.find(x=>x.name===name); return h?.currency || 'KRW'; }
 function fmtShort(n){
   if(n>=10000000) return (n/10000000).toFixed(1)+'천만';
   if(n>=1000000)  return (n/10000).toFixed(0)+'만';
@@ -1659,7 +1667,7 @@ document.querySelectorAll('.tab').forEach(btn=>{
     if(tab==='history') renderHistory();
     if(tab==='analysis') renderAnalysis();
     if(tab==='settings') renderSettings();
-    if(tab==='invest'){ loadStockData().then(()=> refreshAllPrices()); startPriceTimer(); }
+    if(tab==='invest'){ fetchFxRate(); loadStockData().then(()=> refreshAllPrices()); startPriceTimer(); }
     else stopPriceTimer();
   });
 });
@@ -2752,12 +2760,12 @@ function renderInvest(){
 }
 
 function updateInvestSummary(){
-  const totalInvest = stockHoldings.reduce((s,h) => s + h.avg_price * h.quantity, 0);
-  const totalEval   = stockHoldings.reduce((s,h) => s + h.current_price * h.quantity, 0);
+  const totalInvest = stockHoldings.reduce((s,h) => s + toKRW(h.avg_price * h.quantity, h.currency), 0);
+  const totalEval   = stockHoldings.reduce((s,h) => s + toKRW(h.current_price * h.quantity, h.currency), 0);
   const evalProfit  = totalEval - totalInvest;
   const evalPct     = totalInvest > 0 ? (evalProfit / totalInvest * 100) : 0;
   const sells       = stockTrades.filter(t => t.trade_type === 'sell');
-  const realProfit  = sells.reduce((s,t) => s + (t.realized_profit||0), 0);
+  const realProfit  = sells.reduce((s,t) => s + toKRW(t.realized_profit||0, currencyOf(t.stock_name)), 0);
 
   document.getElementById('isTotalEval').textContent    = totalEval ? fmt(totalEval) : '-';
   document.getElementById('isTotalInvest').textContent  = '투자금 ' + (totalInvest ? fmt(totalInvest) : '-');
@@ -2781,6 +2789,7 @@ function renderHoldings(){
     return;
   }
   el.innerHTML = stockHoldings.map(h=>{
+    const cur       = h.currency || 'KRW';
     const evalAmt   = h.current_price * h.quantity;
     const investAmt = h.avg_price * h.quantity;
     const profit    = evalAmt - investAmt;
@@ -2788,9 +2797,14 @@ function renderHoldings(){
     const pCls      = profit > 0 ? 'profit-pos' : profit < 0 ? 'profit-neg' : '';
     const pSign     = profit > 0 ? '+' : '';
     const naverUrl  = `https://search.naver.com/search.naver?query=${encodeURIComponent(h.name + ' 주가')}`;
+    const curBadge  = cur === 'USD'
+      ? `<span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:5px;background:rgba(56,189,248,.15);color:#38bdf8;margin-left:6px">$ USD</span>`
+      : `<span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:5px;background:rgba(132,204,22,.15);color:#84cc16;margin-left:6px">₩ KRW</span>`;
+    const krwNote   = cur === 'USD'
+      ? `<div style="font-size:10px;color:var(--text3);font-weight:400;margin-top:3px">≈ ${fmt(toKRW(profit, cur))} (환율 ${Math.round(fxUsdKrw)}원)</div>` : '';
     return `<div class="holding-card">
       <div class="holding-name">
-        <span>${h.name}</span>
+        <span>${h.name}${curBadge}</span>
         <div style="display:flex;gap:5px;align-items:center">
           <button onclick="refreshOnePrice('${h.id}','${h.name}')" title="현재가 자동 조회" style="width:28px;height:28px;border-radius:7px;background:var(--surface2);color:var(--text2);border:1px solid var(--border2);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center" id="refresh-${h.id}">🔄</button>
           <a href="${naverUrl}" target="_blank" rel="noopener" style="width:28px;height:28px;border-radius:7px;background:rgba(3,199,90,.1);color:#03c75a;border:1px solid rgba(3,199,90,.3);font-weight:700;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;font-size:12px">N</a>
@@ -2801,12 +2815,13 @@ function renderHoldings(){
         </div>
       </div>
       <div class="holding-row"><span>보유수량</span><span>${Number(h.quantity).toLocaleString()}주</span></div>
-      <div class="holding-row"><span>평균단가</span><span>${fmt(h.avg_price)}</span></div>
-      <div class="holding-row"><span>현재가</span><span class="price-tap" id="price-display-${h.id}" onclick="startPriceEdit('${h.id}',${h.current_price})">${fmt(h.current_price)}<span class="price-edit-hint">✏️</span></span></div>
-      <div class="holding-row" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)"><span>매수금액</span><span>${fmt(investAmt)}</span></div>
-      <div class="holding-row"><span>평가금액</span><span>${fmt(evalAmt)}</span></div>
+      <div class="holding-row"><span>평균단가</span><span>${fmtCur(h.avg_price, cur)}</span></div>
+      <div class="holding-row"><span>현재가</span><span class="price-tap" id="price-display-${h.id}" onclick="startPriceEdit('${h.id}',${h.current_price})">${fmtCur(h.current_price, cur)}<span class="price-edit-hint">✏️</span></span></div>
+      <div class="holding-row" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)"><span>매수금액</span><span>${fmtCur(investAmt, cur)}</span></div>
+      <div class="holding-row"><span>평가금액</span><span>${fmtCur(evalAmt, cur)}</span></div>
       <div class="holding-profit ${pCls}">
-        평가손익 ${pSign}${fmt(profit)} <span style="font-size:13px;font-weight:500">(${pSign}${pct.toFixed(1)}%)</span>
+        평가손익 ${pSign}${fmtCur(profit, cur)} <span style="font-size:13px;font-weight:500">(${pSign}${pct.toFixed(1)}%)</span>
+        ${krwNote}
         ${h.memo ? `<div style="font-size:11px;color:var(--text3);font-weight:400;margin-top:4px">📝 ${h.memo}</div>` : ''}
       </div>
     </div>`;
@@ -2821,10 +2836,11 @@ function renderTrades(){
   }
   el.innerHTML = stockTrades.map(t=>{
     const isBuy  = t.trade_type === 'buy';
+    const cur    = currencyOf(t.stock_name);
     const total  = t.quantity * t.price;
     const profitHTML = (!isBuy && t.realized_profit)
       ? `<div style="margin-top:5px;font-size:12px;font-weight:700;${t.realized_profit>0?'color:var(--green)':'color:var(--red)'}">
-           실현손익 ${t.realized_profit>0?'+':''}${fmt(t.realized_profit)}
+           실현손익 ${t.realized_profit>0?'+':''}${fmtCur(t.realized_profit, cur)}
          </div>` : '';
     return `<div class="trade-item">
       <div class="trade-header">
@@ -2833,11 +2849,11 @@ function renderTrades(){
           <span class="trade-name">${t.stock_name}</span>
         </div>
         <div style="display:flex;align-items:center;gap:6px">
-          <span style="font-size:14px;font-weight:700;${isBuy?'':'color:var(--red)'}">${isBuy?'':'-'}${fmt(total)}</span>
+          <span style="font-size:14px;font-weight:700;${isBuy?'':'color:var(--red)'}">${isBuy?'':'-'}${fmtCur(total, cur)}</span>
           <button onclick="deleteTrade('${t.id}')" style="font-size:11px;padding:3px 8px;border-radius:6px;background:var(--red-dim);color:var(--red);border:1px solid rgba(239,68,68,.3);cursor:pointer;font-weight:600">삭제</button>
         </div>
       </div>
-      <div class="trade-meta">${t.date} · ${Number(t.quantity).toLocaleString()}주 × ${fmt(t.price)}${t.memo?' · '+t.memo:''}</div>
+      <div class="trade-meta">${t.date} · ${Number(t.quantity).toLocaleString()}주 × ${fmtCur(t.price, cur)}${t.memo?' · '+t.memo:''}</div>
       ${profitHTML}
     </div>`;
   }).join('');
@@ -3095,6 +3111,7 @@ function cancelPriceEdit(){
 
 async function fetchStockPrice(name) {
   // Cloudflare Worker → 네이버 금융 (국내 + 해외)
+  // 반환: { price, currency } 또는 null
   const ctrl = new AbortController();
   const tid  = setTimeout(() => ctrl.abort(), 10000);
   try {
@@ -3103,8 +3120,10 @@ async function fetchStockPrice(name) {
       const d = await r.json();
       clearTimeout(tid);
       if (d && d.price > 0) {
-        // 국내주식은 정수(원), 해외주식은 소수 유지
-        return d.krw ? Math.round(d.price) : d.price;
+        return {
+          price: d.krw ? Math.round(d.price) : d.price, // 국내 정수, 해외 소수
+          currency: d.krw ? 'KRW' : 'USD'
+        };
       }
     }
   } catch(e) {}
@@ -3112,17 +3131,26 @@ async function fetchStockPrice(name) {
   return null;
 }
 
+// ─── 환율 (USD→KRW) ───
+let fxUsdKrw = 1350; // 폴백 기본값
+async function fetchFxRate(){
+  try {
+    const r = await fetch('https://open.er-api.com/v6/latest/USD');
+    if (r.ok) { const d = await r.json(); if (d?.rates?.KRW) fxUsdKrw = d.rates.KRW; }
+  } catch(e) {}
+}
+
 async function refreshOnePrice(id, name) {
   const btn = document.getElementById(`refresh-${id}`);
   if (btn) { btn.textContent = '⏳'; btn.disabled = true; }
-  const price = await fetchStockPrice(name);
+  const res = await fetchStockPrice(name);
   if (btn) { btn.textContent = '🔄'; btn.disabled = false; }
-  if (!price) {
+  if (!res) {
     showToast(`${name} 자동 조회 실패 — 현재가(✏️)를 탭해서 직접 입력하세요`, 'error'); return;
   }
-  const { error } = await supa.from('stock_holdings').update({ current_price: price }).eq('id', id);
+  const { error } = await supa.from('stock_holdings').update({ current_price: res.price, currency: res.currency }).eq('id', id);
   if (error) { showToast('업데이트 실패', 'error'); return; }
-  showToast(`${name}  ${fmt(price)} ✅`, 'success');
+  showToast(`${name}  ${fmtCur(res.price, res.currency)} ✅`, 'success');
   await loadHoldings();
   renderInvest();
 }
@@ -3133,9 +3161,9 @@ async function refreshAllPrices(silent=false) {
   if (btn) { btn.textContent = '⏳ 조회 중...'; btn.disabled = true; }
   let ok = 0;
   for (const h of stockHoldings) {
-    const price = await fetchStockPrice(h.name);
-    if (price) {
-      await supa.from('stock_holdings').update({ current_price: price }).eq('id', h.id);
+    const res = await fetchStockPrice(h.name);
+    if (res) {
+      await supa.from('stock_holdings').update({ current_price: res.price, currency: res.currency }).eq('id', h.id);
       ok++;
     }
   }
