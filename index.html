@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- physico-wallet v2.8 -->
+<!-- physico-wallet v2.9 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -2789,8 +2789,10 @@ function renderHoldings(){
         <div style="display:flex;gap:5px;align-items:center">
           <button onclick="refreshOnePrice('${h.id}','${h.name}')" title="현재가 자동 조회" style="width:28px;height:28px;border-radius:7px;background:var(--surface2);color:var(--text2);border:1px solid var(--border2);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center" id="refresh-${h.id}">🔄</button>
           <a href="${naverUrl}" target="_blank" rel="noopener" style="width:28px;height:28px;border-radius:7px;background:rgba(3,199,90,.1);color:#03c75a;border:1px solid rgba(3,199,90,.3);font-weight:700;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;font-size:12px">N</a>
+          <button onclick="openTradeModal('${h.name}','buy')" style="font-size:11px;padding:4px 9px;border-radius:6px;background:rgba(34,197,94,.12);color:var(--green);border:1px solid rgba(34,197,94,.3);cursor:pointer;font-weight:700">매수</button>
+          <button onclick="openTradeModal('${h.name}','sell')" style="font-size:11px;padding:4px 9px;border-radius:6px;background:var(--red-dim);color:var(--red);border:1px solid rgba(239,68,68,.3);cursor:pointer;font-weight:700">매도</button>
           <button onclick="openHoldingModal('${h.id}')" style="font-size:11px;padding:4px 9px;border-radius:6px;background:var(--amber-dim);color:var(--amber);border:1px solid rgba(245,158,11,.3);cursor:pointer;font-weight:600">수정</button>
-          <button onclick="deleteHolding('${h.id}')" style="font-size:11px;padding:4px 9px;border-radius:6px;background:var(--red-dim);color:var(--red);border:1px solid rgba(239,68,68,.3);cursor:pointer;font-weight:600">삭제</button>
+          <button onclick="deleteHolding('${h.id}')" style="font-size:11px;padding:4px 9px;border-radius:6px;background:var(--surface2);color:var(--text3);border:1px solid var(--border);cursor:pointer;font-weight:600">삭제</button>
         </div>
       </div>
       <div class="holding-row"><span>보유수량</span><span>${Number(h.quantity).toLocaleString()}주</span></div>
@@ -2946,17 +2948,22 @@ function setTradeType(type){
 document.getElementById('tradeBuy').addEventListener('click',  ()=>setTradeType('buy'));
 document.getElementById('tradeSell').addEventListener('click', ()=>setTradeType('sell'));
 
-function openTradeModal(){
+function openTradeModal(prefillName='', prefillType='buy'){
   document.getElementById('tradeDate').value  = today();
-  document.getElementById('tradeName').value  = '';
+  document.getElementById('tradeName').value  = prefillName;
   document.getElementById('tradeQty').value   = '';
   document.getElementById('tradePrice').value = '';
   document.getElementById('tradeMemo').value  = '';
-  setTradeType('buy');
+  setTradeType(prefillType);
   // 종목명 자동완성
   document.getElementById('tradeNameList').innerHTML =
     stockHoldings.map(h=>`<option value="${h.name}">`).join('');
   document.getElementById('tradeModal').classList.add('open');
+  // 종목명 pre-fill 시 수량에 포커스
+  setTimeout(()=>{
+    const focus = prefillName ? 'tradeQty' : 'tradeName';
+    document.getElementById(focus)?.focus();
+  }, 100);
 }
 function closeTradeModal(){
   document.getElementById('tradeModal').classList.remove('open');
