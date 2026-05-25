@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- physico-wallet v2.13 -->
+<!-- physico-wallet v2.14 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -1615,6 +1615,13 @@ function fmtCur(n, cur){
   if(cur === 'USD') return '$' + Number(n).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
   return Number(n).toLocaleString('ko-KR', {maximumFractionDigits:0}) + '원';
 }
+// USD+KRW 같이 표시 ($12.34 ≈ 18,750원)
+function fmtBoth(n, cur){
+  if(cur !== 'USD') return fmtCur(n, cur);
+  const usd = '$' + Number(n).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+  const krw = Number(Math.round(n * fxUsdKrw)).toLocaleString('ko-KR') + '원';
+  return `${usd} <span style="font-size:11px;color:var(--text3);font-weight:400">≈ ${krw}</span>`;
+}
 // 원화 환산 (요약 합계용)
 function toKRW(val, cur){ return cur === 'USD' ? val * fxUsdKrw : val; }
 function currencyOf(name){ const h = stockHoldings.find(x=>x.name===name); return h?.currency || 'KRW'; }
@@ -2800,8 +2807,7 @@ function renderHoldings(){
     const curBadge  = cur === 'USD'
       ? `<span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:5px;background:rgba(56,189,248,.15);color:#38bdf8;margin-left:6px">$ USD</span>`
       : `<span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:5px;background:rgba(132,204,22,.15);color:#84cc16;margin-left:6px">₩ KRW</span>`;
-    const krwNote   = cur === 'USD'
-      ? `<div style="font-size:10px;color:var(--text3);font-weight:400;margin-top:3px">≈ ${fmt(toKRW(profit, cur))} (환율 ${Math.round(fxUsdKrw)}원)</div>` : '';
+    const krwNote   = '';
     return `<div class="holding-card">
       <div class="holding-name">
         <span>${h.name}${curBadge}</span>
@@ -2815,13 +2821,12 @@ function renderHoldings(){
         </div>
       </div>
       <div class="holding-row"><span>보유수량</span><span>${Number(h.quantity).toLocaleString()}주</span></div>
-      <div class="holding-row"><span>평균단가</span><span>${fmtCur(h.avg_price, cur)}</span></div>
-      <div class="holding-row"><span>현재가</span><span class="price-tap" id="price-display-${h.id}" onclick="startPriceEdit('${h.id}',${h.current_price})">${fmtCur(h.current_price, cur)}<span class="price-edit-hint">✏️</span></span></div>
-      <div class="holding-row" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)"><span>매수금액</span><span>${fmtCur(investAmt, cur)}</span></div>
-      <div class="holding-row"><span>평가금액</span><span>${fmtCur(evalAmt, cur)}</span></div>
+      <div class="holding-row"><span>평균단가</span><span>${fmtBoth(h.avg_price, cur)}</span></div>
+      <div class="holding-row"><span>현재가</span><span class="price-tap" id="price-display-${h.id}" onclick="startPriceEdit('${h.id}',${h.current_price})">${fmtBoth(h.current_price, cur)}<span class="price-edit-hint">✏️</span></span></div>
+      <div class="holding-row" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)"><span>매수금액</span><span>${fmtBoth(investAmt, cur)}</span></div>
+      <div class="holding-row"><span>평가금액</span><span>${fmtBoth(evalAmt, cur)}</span></div>
       <div class="holding-profit ${pCls}">
-        평가손익 ${pSign}${fmtCur(profit, cur)} <span style="font-size:13px;font-weight:500">(${pSign}${pct.toFixed(1)}%)</span>
-        ${krwNote}
+        평가손익 ${pSign}${fmtBoth(profit, cur)} <span style="font-size:13px;font-weight:500">(${pSign}${pct.toFixed(1)}%)</span>
         ${h.memo ? `<div style="font-size:11px;color:var(--text3);font-weight:400;margin-top:4px">📝 ${h.memo}</div>` : ''}
       </div>
     </div>`;
