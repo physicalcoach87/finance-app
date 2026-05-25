@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- physico-wallet v2.16 -->
+<!-- physico-wallet v2.17 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -408,6 +408,31 @@ input,select,textarea{font-family:inherit}
 }
 .pin-key:active{transform:scale(.86);background:var(--surface3)}
 .pin-key.dim{opacity:.3;pointer-events:none}
+
+/* ─── 저축/연금 탭 ─── */
+.savings-card{background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:15px;margin-bottom:10px}
+.savings-card-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px}
+.savings-card-left{display:flex;align-items:center;gap:10px}
+.savings-icon{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.savings-name{font-size:15px;font-weight:700;letter-spacing:-.3px}
+.savings-type-badge{font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;display:inline-block}
+.savings-actions{display:flex;gap:5px;flex-shrink:0}
+.savings-action-btn{font-size:11px;font-weight:600;padding:5px 10px;border-radius:7px;border:1px solid var(--border2);color:var(--text3);background:var(--surface2);cursor:pointer;transition:all .15s}
+.savings-action-btn:hover{color:var(--text)}
+.savings-progress-wrap{margin-bottom:8px}
+.savings-progress-bar{height:7px;background:var(--surface3);border-radius:99px;overflow:hidden;margin-bottom:6px}
+.savings-progress-fill{height:100%;border-radius:99px;transition:width .5s ease}
+.savings-progress-labels{display:flex;justify-content:space-between;font-size:11px;color:var(--text3)}
+.savings-pct{font-weight:700}
+.savings-meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;align-items:center}
+.savings-meta-item{font-size:11px;color:var(--text3)}
+.savings-meta-item span{color:var(--text2);font-weight:500}
+.savings-add-btn{width:100%;padding:13px;border-radius:11px;background:var(--surface2);border:1px dashed var(--border2);color:var(--text3);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;margin-top:4px}
+.savings-add-btn:hover{border-color:var(--indigo);color:var(--indigo)}
+.savings-sum-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.savings-sum-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:13px}
+.savings-sum-label{font-size:11px;color:var(--text3);margin-bottom:5px}
+.savings-sum-value{font-size:18px;font-weight:800;letter-spacing:-.5px;color:var(--text)}
 </style>
 </head>
 <body>
@@ -904,6 +929,7 @@ input,select,textarea{font-family:inherit}
   <div class="invest-subtabs">
     <button class="invest-subtab active" id="subtabHoldings" onclick="switchInvestTab('holdings')">📊 보유종목</button>
     <button class="invest-subtab" id="subtabTrades" onclick="switchInvestTab('trades')">📋 매매내역</button>
+    <button class="invest-subtab" id="subtabSavings" onclick="switchInvestTab('savings')">💰 저축/연금</button>
   </div>
 
   <!-- 보유종목 뷰 -->
@@ -952,6 +978,28 @@ input,select,textarea{font-family:inherit}
         <div class="empty-sub">매수/매도를 기록해보세요</div>
       </div>
     </div>
+  </div>
+
+  <!-- 저축/연금 뷰 -->
+  <div id="investSavingsView" class="hidden">
+    <div class="savings-sum-grid">
+      <div class="savings-sum-card">
+        <div class="savings-sum-label">💸 월 총 납입</div>
+        <div class="savings-sum-value" id="savingsMonthlyTotal">-</div>
+      </div>
+      <div class="savings-sum-card">
+        <div class="savings-sum-label">📊 총 적립금</div>
+        <div class="savings-sum-value" id="savingsTotalBalance">-</div>
+      </div>
+    </div>
+    <div id="savingsList">
+      <div class="empty-state">
+        <div class="empty-icon">💰</div>
+        <div class="empty-text">저축 항목을 추가해보세요</div>
+        <div class="empty-sub">적금, 청약, 연금 등을 등록하세요</div>
+      </div>
+    </div>
+    <button class="savings-add-btn" onclick="openSavingsModal(null)">＋ 저축/연금 항목 추가</button>
   </div>
 
 </div>
@@ -1230,6 +1278,73 @@ input,select,textarea{font-family:inherit}
       <input type="text" id="tradeMemo" placeholder="예: 실적 기대, 손절">
     </div>
     <button class="btn-save" id="btnTradeSave" style="background:var(--green)">매수 기록</button>
+  </div>
+</div>
+
+<!-- 저축/연금 추가/수정 모달 -->
+<div class="modal-overlay" id="savingsModal">
+  <div class="modal" style="position:relative">
+    <button class="modal-close" id="btnSavingsClose">✕</button>
+    <div class="modal-title" id="savingsModalTitle">저축/연금 추가</div>
+
+    <div class="form-group" style="margin-bottom:10px">
+      <label>이름</label>
+      <input type="text" id="savingsName" placeholder="예: 신한 적금, 국민연금, 주택청약">
+    </div>
+
+    <div class="form-group" style="margin-bottom:10px">
+      <label>유형</label>
+      <select id="savingsType">
+        <option value="적금">🏦 적금</option>
+        <option value="청약">🏠 주택청약</option>
+        <option value="국민연금">🏛️ 국민연금</option>
+        <option value="은행연금">💼 은행/개인연금</option>
+        <option value="기타">💰 기타 저축</option>
+      </select>
+    </div>
+
+    <div class="form-row g2" style="margin-bottom:10px">
+      <div class="form-group">
+        <label>월 납입액</label>
+        <div style="position:relative">
+          <input type="number" id="savingsMonthly" placeholder="0" min="0" inputmode="numeric" style="padding-right:28px">
+          <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--text3)">원</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>현재 잔액</label>
+        <div style="position:relative">
+          <input type="number" id="savingsBalance" placeholder="0" min="0" inputmode="numeric" style="padding-right:28px">
+          <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--text3)">원</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group" style="margin-bottom:10px">
+      <label>목표금액 (선택 — 만기 수령액 등)</label>
+      <div style="position:relative">
+        <input type="number" id="savingsTarget" placeholder="없으면 비워두세요" min="0" inputmode="numeric" style="padding-right:28px">
+        <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--text3)">원</span>
+      </div>
+    </div>
+
+    <div class="form-row g2" style="margin-bottom:10px">
+      <div class="form-group">
+        <label>시작일 (선택)</label>
+        <input type="date" id="savingsStartDate" style="text-align:left;-webkit-text-align:left;appearance:none;-webkit-appearance:none">
+      </div>
+      <div class="form-group">
+        <label>만기일 (선택)</label>
+        <input type="date" id="savingsEndDate" style="text-align:left;-webkit-text-align:left;appearance:none;-webkit-appearance:none">
+      </div>
+    </div>
+
+    <div class="form-group" style="margin-bottom:16px">
+      <label>메모 (선택)</label>
+      <input type="text" id="savingsMemo" placeholder="특이사항 등">
+    </div>
+
+    <button class="btn-save" id="btnSavingsSave">저장</button>
   </div>
 </div>
 
@@ -2875,8 +2990,11 @@ function switchInvestTab(tab){
   investSubTab = tab;
   document.getElementById('investHoldingsView').classList.toggle('hidden', tab!=='holdings');
   document.getElementById('investTradesView').classList.toggle('hidden', tab!=='trades');
+  document.getElementById('investSavingsView').classList.toggle('hidden', tab!=='savings');
   document.getElementById('subtabHoldings').classList.toggle('active', tab==='holdings');
   document.getElementById('subtabTrades').classList.toggle('active', tab==='trades');
+  document.getElementById('subtabSavings').classList.toggle('active', tab==='savings');
+  if(tab==='savings') loadSavings();
 }
 
 // ─── 종목 추가/수정 모달 ───
@@ -3204,6 +3322,182 @@ async function deleteTrade(id){
   showToast('삭제됐습니다');
   await loadTrades();
   renderInvest();
+}
+
+// ══════════════════════════════════════════════════════════
+// 저축/연금 관리
+// ══════════════════════════════════════════════════════════
+let savingsItems = [];
+let editingSavingsId = null;
+
+const SAVINGS_TYPE_CFG = {
+  '적금':    { icon:'🏦', color:'#38bdf8', bg:'rgba(56,189,248,.14)'  },
+  '청약':    { icon:'🏠', color:'#22c55e', bg:'rgba(34,197,94,.14)'   },
+  '국민연금':{ icon:'🏛️', color:'#6366f1', bg:'rgba(99,102,241,.14)'  },
+  '은행연금':{ icon:'💼', color:'#a855f7', bg:'rgba(168,85,247,.14)'  },
+  '기타':    { icon:'💰', color:'#f59e0b', bg:'rgba(245,158,11,.14)'  },
+};
+
+async function loadSavings(){
+  if(!currentUser) return;
+  const { data } = await supa.from('savings')
+    .select('*').eq('user_id', currentUser.id)
+    .order('created_at', { ascending:true });
+  savingsItems = data || [];
+  renderSavings();
+}
+
+function renderSavings(){
+  const totalMonthly = savingsItems.reduce((s,i) => s + (i.monthly_amount||0), 0);
+  const totalBalance = savingsItems.reduce((s,i) => s + (i.current_balance||0), 0);
+  const elM = document.getElementById('savingsMonthlyTotal');
+  const elB = document.getElementById('savingsTotalBalance');
+  if(elM) elM.textContent = fmt(totalMonthly);
+  if(elB) elB.textContent = fmt(totalBalance);
+
+  const container = document.getElementById('savingsList');
+  if(!container) return;
+
+  if(!savingsItems.length){
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">💰</div><div class="empty-text">저축 항목을 추가해보세요</div><div class="empty-sub">적금, 청약, 연금 등을 등록하세요</div></div>';
+    return;
+  }
+
+  container.innerHTML = savingsItems.map(item => {
+    const cfg = SAVINGS_TYPE_CFG[item.type] || SAVINGS_TYPE_CFG['기타'];
+
+    // 진행률
+    const pct = (item.target_amount > 0)
+      ? Math.min(100, Math.round(item.current_balance / item.target_amount * 100))
+      : null;
+
+    // 만기 D-day
+    let dday = '';
+    if(item.end_date){
+      const today = new Date(); today.setHours(0,0,0,0);
+      const end   = new Date(item.end_date + 'T00:00:00');
+      const diff  = Math.ceil((end - today) / 86400000);
+      if(diff > 0)        dday = 'D-' + diff;
+      else if(diff === 0) dday = 'D-Day';
+      else                dday = '만기완료';
+    }
+
+    // 진행바 or 잔액
+    let progressHTML;
+    if(pct !== null){
+      progressHTML = '<div class="savings-progress-wrap">'
+        + '<div class="savings-progress-bar">'
+        + '<div class="savings-progress-fill" style="width:' + pct + '%;background:' + cfg.color + '"></div>'
+        + '</div>'
+        + '<div class="savings-progress-labels">'
+        + '<span>' + fmt(item.current_balance) + '</span>'
+        + '<span>목표 ' + fmt(item.target_amount)
+        + ' <span class="savings-pct" style="color:' + cfg.color + '">' + pct + '%</span></span>'
+        + '</div></div>';
+    } else {
+      progressHTML = '<div style="font-size:13px;color:var(--text2);margin-bottom:8px">현재 잔액 <strong>' + fmt(item.current_balance) + '</strong></div>';
+    }
+
+    // 메타 정보
+    const metas = [];
+    if(item.start_date) metas.push('시작 <span>' + item.start_date.slice(0,7).replace('-','.') + '</span>');
+    if(item.end_date){
+      const ddayColor = (dday === '만기완료') ? 'var(--text3)' : 'var(--amber)';
+      const ddayHtml  = dday ? ' <span style="color:' + ddayColor + ';font-weight:700">(' + dday + ')</span>' : '';
+      metas.push('만기 <span>' + item.end_date.slice(0,7).replace('-','.') + '</span>' + ddayHtml);
+    }
+    if(item.memo) metas.push('<span>' + item.memo + '</span>');
+
+    const metaHTML = metas.length
+      ? '<div class="savings-meta">' + metas.map(m => '<div class="savings-meta-item">' + m + '</div>').join('<span style="color:var(--border2)"> · </span>') + '</div>'
+      : '';
+
+    const iid = item.id;
+    return '<div class="savings-card">'
+      + '<div class="savings-card-header">'
+      + '<div class="savings-card-left">'
+      + '<div class="savings-icon" style="background:' + cfg.bg + '">' + cfg.icon + '</div>'
+      + '<div>'
+      + '<div class="savings-name">' + item.name + '</div>'
+      + '<div style="display:flex;gap:7px;align-items:center;margin-top:4px">'
+      + '<span class="savings-type-badge" style="background:' + cfg.bg + ';color:' + cfg.color + '">' + item.type + '</span>'
+      + '<span style="font-size:11px;color:var(--text3)">월 ' + fmt(item.monthly_amount) + '</span>'
+      + '</div></div></div>'
+      + '<div class="savings-actions">'
+      + '<button class="savings-action-btn" onclick="openSavingsModal(\'' + iid + '\')">수정</button>'
+      + '<button class="savings-action-btn" style="color:var(--red)" onclick="deleteSavingsItem(\'' + iid + '\')">삭제</button>'
+      + '</div></div>'
+      + progressHTML
+      + metaHTML
+      + '</div>';
+  }).join('');
+}
+
+function openSavingsModal(id){
+  editingSavingsId = id || null;
+  const item = id ? savingsItems.find(x => x.id === id) : null;
+  document.getElementById('savingsModalTitle').textContent = item ? '저축/연금 수정' : '저축/연금 추가';
+  document.getElementById('savingsName').value      = item ? item.name : '';
+  document.getElementById('savingsType').value      = item ? item.type : '적금';
+  document.getElementById('savingsMonthly').value   = item ? item.monthly_amount : '';
+  document.getElementById('savingsBalance').value   = item ? item.current_balance : '';
+  document.getElementById('savingsTarget').value    = (item && item.target_amount) ? item.target_amount : '';
+  document.getElementById('savingsStartDate').value = item ? (item.start_date || '') : '';
+  document.getElementById('savingsEndDate').value   = item ? (item.end_date || '') : '';
+  document.getElementById('savingsMemo').value      = item ? (item.memo || '') : '';
+  document.getElementById('savingsModal').classList.add('open');
+}
+
+document.getElementById('btnSavingsClose').addEventListener('click', () => {
+  document.getElementById('savingsModal').classList.remove('open');
+});
+document.getElementById('savingsModal').addEventListener('click', e => {
+  if(e.target === document.getElementById('savingsModal'))
+    document.getElementById('savingsModal').classList.remove('open');
+});
+
+document.getElementById('btnSavingsSave').addEventListener('click', async () => {
+  const name    = document.getElementById('savingsName').value.trim();
+  const type    = document.getElementById('savingsType').value;
+  const monthly = parseInt(document.getElementById('savingsMonthly').value) || 0;
+  const balance = parseInt(document.getElementById('savingsBalance').value) || 0;
+  const target  = parseInt(document.getElementById('savingsTarget').value)  || null;
+  const startD  = document.getElementById('savingsStartDate').value || null;
+  const endD    = document.getElementById('savingsEndDate').value   || null;
+  const memo    = document.getElementById('savingsMemo').value.trim() || null;
+
+  if(!name){ showToast('이름을 입력해주세요', 'error'); return; }
+
+  const btn = document.getElementById('btnSavingsSave');
+  btn.disabled = true; btn.textContent = '저장 중...';
+
+  const payload = {
+    name, type, monthly_amount: monthly, current_balance: balance,
+    target_amount: target, start_date: startD, end_date: endD,
+    memo, user_id: currentUser.id
+  };
+
+  let error;
+  if(editingSavingsId){
+    ({ error } = await supa.from('savings').update(payload).eq('id', editingSavingsId));
+  } else {
+    ({ error } = await supa.from('savings').insert(payload));
+  }
+
+  btn.disabled = false; btn.textContent = '저장';
+  if(error){ showToast('저장 실패: ' + error.message, 'error'); return; }
+
+  showToast(editingSavingsId ? '수정됐습니다 ✅' : '추가됐습니다 ✅');
+  document.getElementById('savingsModal').classList.remove('open');
+  await loadSavings();
+});
+
+async function deleteSavingsItem(id){
+  if(!confirm('이 저축 항목을 삭제할까요?')) return;
+  const { error } = await supa.from('savings').delete().eq('id', id);
+  if(error){ showToast('삭제 실패', 'error'); return; }
+  showToast('삭제됐습니다');
+  await loadSavings();
 }
 </script>
 </body>
