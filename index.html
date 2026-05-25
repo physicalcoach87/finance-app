@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- physico-wallet v2.10 -->
+<!-- physico-wallet v2.11 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -910,11 +910,14 @@ input,select,textarea{font-family:inherit}
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
       <div style="font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.8px">보유종목</div>
       <div style="display:flex;gap:6px">
-        <button id="btnRefreshAll" onclick="refreshAllPrices()" style="
-          font-size:12px;font-weight:700;padding:6px 12px;
-          background:var(--surface2);color:var(--text2);border-radius:8px;
-          border:1px solid var(--border2);cursor:pointer;
-        ">🔄 시세 업데이트</button>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+          <button id="btnRefreshAll" onclick="refreshAllPrices()" style="
+            font-size:12px;font-weight:700;padding:6px 12px;
+            background:var(--surface2);color:var(--text2);border-radius:8px;
+            border:1px solid var(--border2);cursor:pointer;
+          ">🔄 시세 업데이트</button>
+          <div id="priceLastUpdated" style="font-size:10px;color:var(--text3)"></div>
+        </div>
         <button onclick="openHoldingModal(null)" style="
           font-size:12px;font-weight:700;padding:6px 12px;
           background:var(--green);color:#fff;border-radius:8px;
@@ -1655,7 +1658,8 @@ document.querySelectorAll('.tab').forEach(btn=>{
     if(tab==='history') renderHistory();
     if(tab==='analysis') renderAnalysis();
     if(tab==='settings') renderSettings();
-    if(tab==='invest') loadStockData().then(()=> refreshAllPrices());
+    if(tab==='invest'){ loadStockData().then(()=> refreshAllPrices()); startPriceTimer(); }
+    else stopPriceTimer();
   });
 });
 
@@ -3049,6 +3053,14 @@ document.getElementById('btnTradeSave').addEventListener('click', async ()=>{
 });
 
 // ─── 자동 시세 조회 ───
+// ─── 시세 자동갱신 타이머 ───
+let _priceTimer = null;
+function startPriceTimer(){
+  stopPriceTimer();
+  _priceTimer = setInterval(()=>{ refreshAllPrices(true); }, 5*60*1000); // 5분마다
+}
+function stopPriceTimer(){ if(_priceTimer){ clearInterval(_priceTimer); _priceTimer=null; } }
+
 // ─── 현재가 인라인 편집 ───
 function startPriceEdit(id, currentPrice){
   const el = document.getElementById('price-display-'+id);
@@ -3082,76 +3094,56 @@ function cancelPriceEdit(){
 
 async function fetchStockPrice(name) {
   const ctrl = new AbortController();
-  const tid   = setTimeout(() => ctrl.abort(), 6000);
+  const tid  = setTimeout(() => ctrl.abort(), 10000);
 
-  // 1. 네이버 자동완성으로 종목코드 탐색
-  try {
-    const acResp = await fetch(
-      `https://ac.stock.naver.com/ac?q=${encodeURIComponent(name)}&target=stock`,
-      { signal: ctrl.signal }
-    );
-    if (acResp.ok) {
-      const acData = await acResp.json();
-      // 응답 형식: { items: [[["005930","삼성전자","KOSPI",...],...]] }
-      const code = acData?.items?.[0]?.[0]?.[0];
-      if (code) {
-        // 네이버 polling API
-        try {
-          const pResp = await fetch(
-            `https://polling.finance.naver.com/api/realtime/domestic/stock/${code}`,
-            { signal: ctrl.signal }
-          );
-          if (pResp.ok) {
-            const pData = await pResp.json();
-            const price = parseInt((pData?.closePrice || '').replace(/,/g,''));
-            if (price > 0) { clearTimeout(tid); return price; }
-          }
-        } catch(e2) {}
+  const tryJson = async (url, opts={}) => {
+    try {
+      const r = await fetch(url, { signal: ctrl.signal, credentials:'omit', ...opts });
+      if (r.ok) return await r.json();
+    } catch(e) {}
+    return null;
+  };
 
-        // 야후 파이낸스 v7 quote API (CORS 지원 더 나음)
-        for (const suffix of ['.KS', '.KQ']) {
-          try {
-            const yResp = await fetch(
-              `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${code}${suffix}&lang=ko-KR&region=KR`,
-              { signal: ctrl.signal, credentials: 'omit' }
-            );
-            if (yResp.ok) {
-              const yData = await yResp.json();
-              const price = yData?.quoteResponse?.result?.[0]?.regularMarketPrice;
-              if (price > 0) { clearTimeout(tid); return Math.round(price); }
-            }
-          } catch(e3) {}
-        }
-        // 야후 파이낸스 v8 chart (fallback)
-        for (const suffix of ['.KS', '.KQ']) {
-          try {
-            const yResp = await fetch(
-              `https://query1.finance.yahoo.com/v8/finance/chart/${code}${suffix}?interval=1d&range=1d`,
-              { signal: ctrl.signal, credentials: 'omit' }
-            );
-            if (yResp.ok) {
-              const yData = await yResp.json();
-              const price = yData?.chart?.result?.[0]?.meta?.regularMarketPrice;
-              if (price > 0) { clearTimeout(tid); return Math.round(price); }
-            }
-          } catch(e3) {}
-        }
+  // ── 1. 네이버 자동완성으로 종목코드 획득 ──
+  let code = null;
+  const ac = await tryJson(`https://ac.stock.naver.com/ac?q=${encodeURIComponent(name)}&target=stock`);
+  code = ac?.items?.[0]?.[0]?.[0] ?? null;
+
+  if (code) {
+    // ── 2. Yahoo Finance v7 quote (query1 / query2 모두 시도) ──
+    for (const host of ['query1','query2']) {
+      for (const sfx of ['.KS','.KQ']) {
+        const d = await tryJson(`https://${host}.finance.yahoo.com/v7/finance/quote?symbols=${code}${sfx}&lang=ko-KR&region=KR`);
+        const p = d?.quoteResponse?.result?.[0]?.regularMarketPrice;
+        if (p > 0) { clearTimeout(tid); return Math.round(p); }
       }
     }
-  } catch(e) {}
-
-  // 2. 미국주식 — 이름을 티커로 직접 시도 (AAPL, TSLA 등)
-  try {
-    const yResp = await fetch(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(name)}?interval=1d&range=1d`,
-      { signal: ctrl.signal }
-    );
-    if (yResp.ok) {
-      const yData = await yResp.json();
-      const price = yData?.chart?.result?.[0]?.meta?.regularMarketPrice;
-      if (price > 0) { clearTimeout(tid); return Math.round(price); }
+    // ── 3. Yahoo Finance v8 chart (query1 / query2) ──
+    for (const host of ['query1','query2']) {
+      for (const sfx of ['.KS','.KQ']) {
+        const d = await tryJson(`https://${host}.finance.yahoo.com/v8/finance/chart/${code}${sfx}?interval=1d&range=1d`);
+        const p = d?.chart?.result?.[0]?.meta?.regularMarketPrice;
+        if (p > 0) { clearTimeout(tid); return Math.round(p); }
+      }
     }
-  } catch(e) {}
+    // ── 4. CORS 프록시 → 네이버 polling ──
+    for (const proxy of [
+      u=>`https://corsproxy.io/?url=${encodeURIComponent(u)}`,
+      u=>`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`
+    ]) {
+      const naverUrl = `https://polling.finance.naver.com/api/realtime/domestic/stock/${code}`;
+      const d = await tryJson(proxy(naverUrl));
+      const p = parseInt((d?.closePrice||'').replace(/,/g,''));
+      if (p > 0) { clearTimeout(tid); return p; }
+    }
+  }
+
+  // ── 5. 미국주식 — 티커 직접 시도 (AAPL, TSLA 등) ──
+  for (const host of ['query1','query2']) {
+    const d = await tryJson(`https://${host}.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(name)}`);
+    const p = d?.quoteResponse?.result?.[0]?.regularMarketPrice;
+    if (p > 0) { clearTimeout(tid); return p; }
+  }
 
   clearTimeout(tid);
   return null;
@@ -3172,25 +3164,34 @@ async function refreshOnePrice(id, name) {
   renderInvest();
 }
 
-async function refreshAllPrices() {
+async function refreshAllPrices(silent=false) {
   if (!stockHoldings.length) return;
   const btn = document.getElementById('btnRefreshAll');
   if (btn) { btn.textContent = '⏳ 조회 중...'; btn.disabled = true; }
-  let ok = 0, fail = 0;
+  let ok = 0;
   for (const h of stockHoldings) {
     const price = await fetchStockPrice(h.name);
     if (price) {
       await supa.from('stock_holdings').update({ current_price: price }).eq('id', h.id);
       ok++;
-    } else {
-      fail++;
     }
   }
   if (btn) { btn.textContent = '🔄 시세 업데이트'; btn.disabled = false; }
   await loadHoldings();
   renderInvest();
-  if (ok > 0)   showToast(`${ok}개 시세 업데이트됐습니다 ✅`, 'success');
-  else          showToast(`자동 조회 실패 — 카드의 현재가(✏️)를 탭해서 직접 입력하세요`, 'error');
+  // 마지막 업데이트 시간
+  const el = document.getElementById('priceLastUpdated');
+  if (el) {
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2,'0');
+    const mm = String(now.getMinutes()).padStart(2,'0');
+    el.textContent = ok > 0 ? `${hh}:${mm} 업데이트됨` : `조회 실패`;
+    el.style.color = ok > 0 ? 'var(--green)' : 'var(--red)';
+  }
+  if (!silent) {
+    if (ok > 0) showToast(`${ok}개 시세 업데이트됐습니다 ✅`, 'success');
+    else        showToast(`자동 조회 실패 — 현재가(✏️)를 탭해서 직접 입력하세요`, 'error');
+  }
 }
 
 async function deleteTrade(id){
