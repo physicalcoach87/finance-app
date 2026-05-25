@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- physico-wallet v2.5 -->
+<!-- physico-wallet v2.6 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -558,6 +558,7 @@ input,select,textarea{font-family:inherit}
         <label>카테고리</label>
         <div class="cat-chips" id="catChips">
           <button class="cat-chip" data-cat="식비">🍚 식비</button>
+          <button class="cat-chip" data-cat="생활">🏠 생활</button>
           <button class="cat-chip" data-cat="교통/주유">⛽ 교통/주유</button>
           <button class="cat-chip" data-cat="의료/뷰티">💊 의료/뷰티</button>
           <button class="cat-chip" data-cat="구독">📱 구독</button>
@@ -624,6 +625,7 @@ input,select,textarea{font-family:inherit}
     <button class="filter-chip active" data-cat="전체">전체</button>
     <button class="filter-chip" data-cat="수입" style="border-color:var(--green);color:var(--green)">💰 수입</button>
     <button class="filter-chip" data-cat="식비">🍚 식비</button>
+    <button class="filter-chip" data-cat="생활">🏠 생활</button>
     <button class="filter-chip" data-cat="교통/주유">⛽ 교통/주유</button>
     <button class="filter-chip" data-cat="의료/뷰티">💊 의료/뷰티</button>
     <button class="filter-chip" data-cat="구독">📱 구독</button>
@@ -785,6 +787,7 @@ input,select,textarea{font-family:inherit}
             <option value="구독">📱 구독</option>
             <option value="교통/주유">⛽ 교통/주유</option>
             <option value="의료/뷰티">💊 의료/뷰티</option>
+            <option value="생활">🏠 생활</option>
             <option value="식비">🍚 식비</option>
             <option value="기타">📦 기타</option>
           </select>
@@ -1121,6 +1124,7 @@ input,select,textarea{font-family:inherit}
       <label>카테고리</label>
       <div class="cat-chips" id="editCatChips">
         <button class="cat-chip" data-cat="식비">🍚 식비</button>
+        <button class="cat-chip" data-cat="생활">🏠 생활</button>
         <button class="cat-chip" data-cat="교통/주유">⛽ 교통/주유</button>
         <button class="cat-chip" data-cat="의료/뷰티">💊 의료/뷰티</button>
         <button class="cat-chip" data-cat="구독">📱 구독</button>
@@ -1155,19 +1159,28 @@ input,select,textarea{font-family:inherit}
       <label>종목명</label>
       <input type="text" id="holdingName" placeholder="예: 삼성전자, AAPL, 카카오">
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-      <div class="form-group">
-        <label>보유주수</label>
-        <input type="number" id="holdingQty" placeholder="0" min="0" step="0.01" inputmode="decimal">
-      </div>
-      <div class="form-group">
-        <label>평균단가 (원)</label>
-        <input type="number" id="holdingAvgPrice" placeholder="0" min="0" inputmode="numeric">
-      </div>
-    </div>
     <div class="form-group" style="margin-bottom:10px">
-      <label>현재가 (원)</label>
-      <input type="number" id="holdingCurrentPrice" placeholder="0" min="0" inputmode="numeric">
+      <label>보유주수</label>
+      <input type="number" id="holdingQty" placeholder="0" min="0" step="0.01" inputmode="decimal">
+    </div>
+    <!-- 신규 종목: 매수가만 표시 (평단가 = 매수가로 자동처리) -->
+    <div class="form-group" style="margin-bottom:10px" id="holdingBuyPriceGroup">
+      <label id="holdingBuyPriceLabel">매수가 (주당)</label>
+      <input type="number" id="holdingBuyPrice" placeholder="0" min="0" inputmode="numeric">
+      <div style="font-size:11px;color:var(--text3);margin-top:4px">평균단가와 현재가가 매수가로 자동 설정됩니다</div>
+    </div>
+    <!-- 기존 종목 수정: 평균단가 + 현재가 분리 -->
+    <div id="holdingEditPriceGroup" class="hidden">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div class="form-group">
+          <label>평균단가 (원)</label>
+          <input type="number" id="holdingAvgPrice" placeholder="0" min="0" inputmode="numeric">
+        </div>
+        <div class="form-group">
+          <label>현재가 (원)</label>
+          <input type="number" id="holdingCurrentPrice" placeholder="0" min="0" inputmode="numeric">
+        </div>
+      </div>
     </div>
     <div class="form-group" style="margin-bottom:16px">
       <label>메모 (선택)</label>
@@ -1567,6 +1580,7 @@ const PRESET_CARDS = [
 
 const CAT_COLORS = {
   '식비':        '#f97316',
+  '생활':        '#84cc16',
   '교통/주유':   '#6366f1',
   '의료/뷰티':   '#ec4899',
   '구독':        '#14b8a6',
@@ -1580,7 +1594,7 @@ const CAT_COLORS = {
   '기타':        '#6b7280',
 };
 const CAT_ICONS = {
-  '식비':'🍚','교통/주유':'⛽','의료/뷰티':'💊',
+  '식비':'🍚','생활':'🏠','교통/주유':'⛽','의료/뷰티':'💊',
   '구독':'📱','쇼핑':'🛍️','여행':'✈️','고정비':'🔒',
   '보험':'🛡️','대출/금융':'🏦','모임/회비':'🤝','취미/레저':'🎯','기타':'📦',
 };
@@ -2830,13 +2844,24 @@ function switchInvestTab(tab){
 function openHoldingModal(id){
   editingHoldingId = id || null;
   const h = id ? stockHoldings.find(x=>x.id===id) : null;
-  document.getElementById('holdingModalTitle').textContent = h ? '종목 수정' : '종목 추가';
-  document.getElementById('holdingName').value         = h ? h.name : '';
-  document.getElementById('holdingQty').value          = h ? h.quantity : '';
-  document.getElementById('holdingAvgPrice').value     = h ? h.avg_price : '';
-  document.getElementById('holdingCurrentPrice').value = h ? h.current_price : '';
-  document.getElementById('holdingMemo').value         = h ? h.memo||'' : '';
-  document.getElementById('holdingName').disabled      = !!h; // 수정 시 종목명 잠금
+  const isNew = !h;
+
+  document.getElementById('holdingModalTitle').textContent = isNew ? '신규 종목 추가' : '종목 수정';
+  document.getElementById('holdingName').value  = h ? h.name : '';
+  document.getElementById('holdingQty').value   = h ? h.quantity : '';
+  document.getElementById('holdingMemo').value  = h ? h.memo||'' : '';
+  document.getElementById('holdingName').disabled = !!h;
+
+  if(isNew){
+    document.getElementById('holdingBuyPriceGroup').classList.remove('hidden');
+    document.getElementById('holdingEditPriceGroup').classList.add('hidden');
+    document.getElementById('holdingBuyPrice').value = '';
+  } else {
+    document.getElementById('holdingBuyPriceGroup').classList.add('hidden');
+    document.getElementById('holdingEditPriceGroup').classList.remove('hidden');
+    document.getElementById('holdingAvgPrice').value     = h.avg_price;
+    document.getElementById('holdingCurrentPrice').value = h.current_price;
+  }
   document.getElementById('holdingModal').classList.add('open');
 }
 function closeHoldingModal(){
@@ -2852,12 +2877,24 @@ document.getElementById('btnHoldingSave').addEventListener('click', async ()=>{
   const btn  = document.getElementById('btnHoldingSave');
   const name = document.getElementById('holdingName').value.trim();
   const qty  = parseFloat(document.getElementById('holdingQty').value);
-  const avg  = parseFloat(document.getElementById('holdingAvgPrice').value);
-  const cur  = parseFloat(document.getElementById('holdingCurrentPrice').value);
   const memo = document.getElementById('holdingMemo').value.trim();
-  if(!name || isNaN(qty) || isNaN(avg) || isNaN(cur)){
-    showToast('종목명, 주수, 단가를 모두 입력해주세요', 'error'); return;
+  const isNew = !editingHoldingId;
+
+  let avg, cur;
+  if(isNew){
+    const buyPrice = parseFloat(document.getElementById('holdingBuyPrice').value);
+    avg = buyPrice; cur = buyPrice;
+    if(!name || isNaN(qty) || isNaN(buyPrice)){
+      showToast('종목명, 보유주수, 매수가를 입력해주세요', 'error'); return;
+    }
+  } else {
+    avg = parseFloat(document.getElementById('holdingAvgPrice').value);
+    cur = parseFloat(document.getElementById('holdingCurrentPrice').value);
+    if(isNaN(qty) || isNaN(avg) || isNaN(cur)){
+      showToast('주수와 단가를 입력해주세요', 'error'); return;
+    }
   }
+
   btn.disabled=true; btn.textContent='저장 중...';
   try {
     if(editingHoldingId){
