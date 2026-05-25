@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- physico-wallet v2.9 -->
+<!-- physico-wallet v2.10 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -1605,7 +1605,7 @@ const CAT_ICONS = {
 // ══════════════════════════════════════════════════════════
 // 유틸
 // ══════════════════════════════════════════════════════════
-function fmt(n){ return Number(n).toLocaleString('ko-KR') + '원'; }
+function fmt(n){ return Number(n).toLocaleString('ko-KR', {maximumFractionDigits:0}) + '원'; }
 function fmtShort(n){
   if(n>=10000000) return (n/10000000).toFixed(1)+'천만';
   if(n>=1000000)  return (n/10000).toFixed(0)+'만';
@@ -2997,7 +2997,7 @@ document.getElementById('btnTradeSave').addEventListener('click', async ()=>{
         const newQty = holding.quantity + qty;
         const newAvg = (holding.quantity * holding.avg_price + qty * price) / newQty;
         const { error } = await supa.from('stock_holdings').update({
-          quantity: newQty, avg_price: Math.round(newAvg * 100) / 100
+          quantity: newQty, avg_price: Math.round(newAvg)
         }).eq('id', holding.id);
         if(error) throw new Error(error.message);
       } else {
