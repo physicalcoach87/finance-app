@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- physico-wallet v2.11 -->
+<!-- physico-wallet v2.12 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -1236,6 +1236,7 @@ input,select,textarea{font-family:inherit}
 // ══════════════════════════════════════════════════════════
 // CONFIG
 // ══════════════════════════════════════════════════════════
+const STOCK_WORKER = 'https://stock-price.physical-coach87.workers.dev';
 const SUPA_URL = 'https://cgqhozecchjffluxhvii.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNncWhvemVjY2hqZmZsdXhodmlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1MzM0NDMsImV4cCI6MjA5NTEwOTQ0M30.VC0uDikCHKiIYrefKpFerFLdmjFpJkFsXXWnpOnViMI';
 const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
@@ -3093,58 +3094,20 @@ function cancelPriceEdit(){
 }
 
 async function fetchStockPrice(name) {
+  // Cloudflare Worker → 네이버 금융 (국내 + 해외)
   const ctrl = new AbortController();
   const tid  = setTimeout(() => ctrl.abort(), 10000);
-
-  const tryJson = async (url, opts={}) => {
-    try {
-      const r = await fetch(url, { signal: ctrl.signal, credentials:'omit', ...opts });
-      if (r.ok) return await r.json();
-    } catch(e) {}
-    return null;
-  };
-
-  // ── 1. 네이버 자동완성으로 종목코드 획득 ──
-  let code = null;
-  const ac = await tryJson(`https://ac.stock.naver.com/ac?q=${encodeURIComponent(name)}&target=stock`);
-  code = ac?.items?.[0]?.[0]?.[0] ?? null;
-
-  if (code) {
-    // ── 2. Yahoo Finance v7 quote (query1 / query2 모두 시도) ──
-    for (const host of ['query1','query2']) {
-      for (const sfx of ['.KS','.KQ']) {
-        const d = await tryJson(`https://${host}.finance.yahoo.com/v7/finance/quote?symbols=${code}${sfx}&lang=ko-KR&region=KR`);
-        const p = d?.quoteResponse?.result?.[0]?.regularMarketPrice;
-        if (p > 0) { clearTimeout(tid); return Math.round(p); }
+  try {
+    const r = await fetch(`${STOCK_WORKER}/?name=${encodeURIComponent(name)}`, { signal: ctrl.signal });
+    if (r.ok) {
+      const d = await r.json();
+      clearTimeout(tid);
+      if (d && d.price > 0) {
+        // 국내주식은 정수(원), 해외주식은 소수 유지
+        return d.krw ? Math.round(d.price) : d.price;
       }
     }
-    // ── 3. Yahoo Finance v8 chart (query1 / query2) ──
-    for (const host of ['query1','query2']) {
-      for (const sfx of ['.KS','.KQ']) {
-        const d = await tryJson(`https://${host}.finance.yahoo.com/v8/finance/chart/${code}${sfx}?interval=1d&range=1d`);
-        const p = d?.chart?.result?.[0]?.meta?.regularMarketPrice;
-        if (p > 0) { clearTimeout(tid); return Math.round(p); }
-      }
-    }
-    // ── 4. CORS 프록시 → 네이버 polling ──
-    for (const proxy of [
-      u=>`https://corsproxy.io/?url=${encodeURIComponent(u)}`,
-      u=>`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`
-    ]) {
-      const naverUrl = `https://polling.finance.naver.com/api/realtime/domestic/stock/${code}`;
-      const d = await tryJson(proxy(naverUrl));
-      const p = parseInt((d?.closePrice||'').replace(/,/g,''));
-      if (p > 0) { clearTimeout(tid); return p; }
-    }
-  }
-
-  // ── 5. 미국주식 — 티커 직접 시도 (AAPL, TSLA 등) ──
-  for (const host of ['query1','query2']) {
-    const d = await tryJson(`https://${host}.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(name)}`);
-    const p = d?.quoteResponse?.result?.[0]?.regularMarketPrice;
-    if (p > 0) { clearTimeout(tid); return p; }
-  }
-
+  } catch(e) {}
   clearTimeout(tid);
   return null;
 }
