@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- physico-wallet v2.1 -->
+<!-- physico-wallet v2.2 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -368,6 +368,29 @@ input,select,textarea{font-family:inherit}
 
 /* 숨김 */
 .hidden{display:none!important}
+
+/* ─── 재테크 탭 ─── */
+.invest-summary{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.invest-summary-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px}
+.is-label{font-size:11px;color:var(--text3);font-weight:500;margin-bottom:4px}
+.is-value{font-size:18px;font-weight:800;letter-spacing:-.5px}
+.is-sub{font-size:10px;color:var(--text3);margin-top:2px}
+.invest-subtabs{display:flex;background:var(--surface2);border-radius:10px;padding:3px;margin-bottom:14px;gap:3px}
+.invest-subtab{flex:1;padding:8px;border-radius:8px;font-size:13px;font-weight:600;color:var(--text3);transition:all .15s;text-align:center;border:none;cursor:pointer;background:transparent}
+.invest-subtab.active{background:var(--surface);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.3)}
+.holding-card{background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:14px;margin-bottom:8px}
+.holding-name{font-size:16px;font-weight:700;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+.holding-row{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--text3);margin-top:5px}
+.holding-row span:last-child{color:var(--text);font-weight:600}
+.holding-profit{font-size:15px;font-weight:700;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.trade-item{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:12px 14px;margin-bottom:6px}
+.trade-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.trade-name{font-size:14px;font-weight:600}
+.trade-meta{font-size:11px;color:var(--text3)}
+.buy-badge{font-size:11px;font-weight:700;padding:2px 8px;border-radius:5px;background:rgba(34,197,94,.12);color:var(--green);border:1px solid rgba(34,197,94,.3)}
+.sell-badge{font-size:11px;font-weight:700;padding:2px 8px;border-radius:5px;background:rgba(239,68,68,.12);color:var(--red);border:1px solid rgba(239,68,68,.3)}
+.profit-pos{color:var(--green)}
+.profit-neg{color:var(--red)}
 </style>
 </head>
 <body>
@@ -410,6 +433,10 @@ input,select,textarea{font-family:inherit}
     <button class="tab" data-tab="settings">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
       설정
+    </button>
+    <button class="tab" data-tab="invest">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+      재테크
     </button>
   </div>
 </div>
@@ -818,6 +845,79 @@ input,select,textarea{font-family:inherit}
 
 </div>
 
+<!-- ════ 탭: 재테크 ════ -->
+<div class="content hidden" id="tab-invest">
+
+  <!-- 요약 카드 4개 -->
+  <div class="invest-summary">
+    <div class="invest-summary-card">
+      <div class="is-label">📈 총 평가금액</div>
+      <div class="is-value" id="isTotalEval">-</div>
+      <div class="is-sub" id="isTotalInvest">투자금 -</div>
+    </div>
+    <div class="invest-summary-card">
+      <div class="is-label">💹 평가손익</div>
+      <div class="is-value" id="isEvalProfit">-</div>
+      <div class="is-sub" id="isEvalPct">-</div>
+    </div>
+    <div class="invest-summary-card">
+      <div class="is-label">✅ 실현손익</div>
+      <div class="is-value" id="isRealProfit">-</div>
+      <div class="is-sub" id="isRealCount">매도 0건</div>
+    </div>
+    <div class="invest-summary-card">
+      <div class="is-label">📦 보유종목</div>
+      <div class="is-value" id="isHoldingCount">0</div>
+      <div class="is-sub">종목</div>
+    </div>
+  </div>
+
+  <!-- 서브탭 -->
+  <div class="invest-subtabs">
+    <button class="invest-subtab active" id="subtabHoldings" onclick="switchInvestTab('holdings')">📊 보유종목</button>
+    <button class="invest-subtab" id="subtabTrades" onclick="switchInvestTab('trades')">📋 매매내역</button>
+  </div>
+
+  <!-- 보유종목 뷰 -->
+  <div id="investHoldingsView">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div style="font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.8px">보유종목</div>
+      <button onclick="openHoldingModal(null)" style="
+        font-size:12px;font-weight:700;padding:6px 12px;
+        background:var(--green);color:#fff;border-radius:8px;
+        border:none;cursor:pointer;
+      ">+ 종목 추가</button>
+    </div>
+    <div id="holdingsList">
+      <div class="empty-state">
+        <div class="empty-icon">📊</div>
+        <div class="empty-text">보유 종목을 추가해보세요</div>
+        <div class="empty-sub">+ 종목 추가 버튼을 눌러 등록하세요</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 매매내역 뷰 -->
+  <div id="investTradesView" class="hidden">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div style="font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.8px">매매내역</div>
+      <button onclick="openTradeModal()" style="
+        font-size:12px;font-weight:700;padding:6px 12px;
+        background:var(--indigo);color:#fff;border-radius:8px;
+        border:none;cursor:pointer;
+      ">+ 매매 기록</button>
+    </div>
+    <div id="tradesList">
+      <div class="empty-state">
+        <div class="empty-icon">📋</div>
+        <div class="empty-text">매매 내역이 없습니다</div>
+        <div class="empty-sub">매수/매도를 기록해보세요</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
 <!-- ════ 로그인 화면 ════ -->
 <div id="loginScreen" style="
   position:fixed;inset:0;background:var(--bg);z-index:999;
@@ -976,6 +1076,73 @@ input,select,textarea{font-family:inherit}
   </div>
 </div>
 
+
+<!-- 종목 추가/수정 모달 -->
+<div class="modal-overlay" id="holdingModal">
+  <div class="modal" style="position:relative">
+    <button class="modal-close" id="btnHoldingClose">✕</button>
+    <div class="modal-title" id="holdingModalTitle">종목 추가</div>
+    <div class="form-group" style="margin-bottom:10px">
+      <label>종목명</label>
+      <input type="text" id="holdingName" placeholder="예: 삼성전자, AAPL, 카카오">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+      <div class="form-group">
+        <label>보유주수</label>
+        <input type="number" id="holdingQty" placeholder="0" min="0" step="0.01" inputmode="decimal">
+      </div>
+      <div class="form-group">
+        <label>평균단가 (원)</label>
+        <input type="number" id="holdingAvgPrice" placeholder="0" min="0" inputmode="numeric">
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom:10px">
+      <label>현재가 (원)</label>
+      <input type="number" id="holdingCurrentPrice" placeholder="0" min="0" inputmode="numeric">
+    </div>
+    <div class="form-group" style="margin-bottom:16px">
+      <label>메모 (선택)</label>
+      <input type="text" id="holdingMemo" placeholder="예: 장기보유, 적립식">
+    </div>
+    <button class="btn-save" id="btnHoldingSave" style="background:var(--green)">저장</button>
+  </div>
+</div>
+
+<!-- 매매 기록 모달 -->
+<div class="modal-overlay" id="tradeModal">
+  <div class="modal" style="position:relative">
+    <button class="modal-close" id="btnTradeClose">✕</button>
+    <div class="modal-title">매매 기록</div>
+    <div style="display:flex;gap:6px;margin-bottom:12px">
+      <button id="tradeBuy" style="flex:1;padding:9px;border-radius:9px;font-size:13px;font-weight:700;border:2px solid var(--green);background:rgba(34,197,94,.12);color:var(--green);transition:all .15s;cursor:pointer">📈 매수</button>
+      <button id="tradeSell" style="flex:1;padding:9px;border-radius:9px;font-size:13px;font-weight:700;border:2px solid var(--border2);background:var(--surface2);color:var(--text3);transition:all .15s;cursor:pointer">📉 매도</button>
+    </div>
+    <div class="form-group" style="margin-bottom:10px">
+      <label>날짜</label>
+      <input type="date" id="tradeDate">
+    </div>
+    <div class="form-group" style="margin-bottom:10px">
+      <label>종목명</label>
+      <input type="text" id="tradeName" placeholder="예: 삼성전자, AAPL" list="tradeNameList">
+      <datalist id="tradeNameList"></datalist>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+      <div class="form-group">
+        <label>주수</label>
+        <input type="number" id="tradeQty" placeholder="0" min="0" step="0.01" inputmode="decimal">
+      </div>
+      <div class="form-group">
+        <label>가격 (주당)</label>
+        <input type="number" id="tradePrice" placeholder="0" min="0" inputmode="numeric">
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom:16px">
+      <label>메모 (선택)</label>
+      <input type="text" id="tradeMemo" placeholder="예: 실적 기대, 손절">
+    </div>
+    <button class="btn-save" id="btnTradeSave" style="background:var(--green)">매수 기록</button>
+  </div>
+</div>
 
 <script>
 // ══════════════════════════════════════════════════════════
@@ -1190,6 +1357,7 @@ document.querySelectorAll('.tab').forEach(btn=>{
     if(tab==='history') renderHistory();
     if(tab==='analysis') renderAnalysis();
     if(tab==='settings') renderSettings();
+    if(tab==='invest') loadStockData();
   });
 });
 
@@ -2240,6 +2408,319 @@ function guessCat(merchant){
 // 초기화
 // ══════════════════════════════════════════════════════════
 // updateMonthLabel/loadExpenses는 initAuth()에서 로그인 후 호출됨
+
+// ══════════════════════════════════════════════════════════
+// 재테크 탭
+// ══════════════════════════════════════════════════════════
+let stockHoldings   = [];
+let stockTrades     = [];
+let investSubTab    = 'holdings';
+let editingHoldingId = null;
+let tradeTypeSelected = 'buy';
+
+async function loadStockData(){
+  if(!currentUser) return;
+  await Promise.all([loadHoldings(), loadTrades()]);
+  renderInvest();
+}
+
+async function loadHoldings(){
+  const { data } = await supa.from('stock_holdings')
+    .select('*').eq('user_id', currentUser.id)
+    .order('created_at', {ascending:true});
+  stockHoldings = data || [];
+}
+
+async function loadTrades(){
+  const { data } = await supa.from('stock_trades')
+    .select('*').eq('user_id', currentUser.id)
+    .order('date', {ascending:false})
+    .order('created_at', {ascending:false});
+  stockTrades = data || [];
+}
+
+function renderInvest(){
+  updateInvestSummary();
+  renderHoldings();
+  renderTrades();
+}
+
+function updateInvestSummary(){
+  const totalInvest = stockHoldings.reduce((s,h) => s + h.avg_price * h.quantity, 0);
+  const totalEval   = stockHoldings.reduce((s,h) => s + h.current_price * h.quantity, 0);
+  const evalProfit  = totalEval - totalInvest;
+  const evalPct     = totalInvest > 0 ? (evalProfit / totalInvest * 100) : 0;
+  const sells       = stockTrades.filter(t => t.trade_type === 'sell');
+  const realProfit  = sells.reduce((s,t) => s + (t.realized_profit||0), 0);
+
+  document.getElementById('isTotalEval').textContent    = totalEval ? fmt(totalEval) : '-';
+  document.getElementById('isTotalInvest').textContent  = '투자금 ' + (totalInvest ? fmt(totalInvest) : '-');
+
+  const epEl = document.getElementById('isEvalProfit');
+  epEl.textContent  = evalProfit ? (evalProfit>0?'+':'')+fmt(evalProfit) : '-';
+  epEl.className    = 'is-value ' + (evalProfit>0?'profit-pos':evalProfit<0?'profit-neg':'');
+  document.getElementById('isEvalPct').textContent = totalInvest>0 ? `${evalPct>0?'+':''}${evalPct.toFixed(1)}%` : '-';
+
+  const rpEl = document.getElementById('isRealProfit');
+  rpEl.textContent  = realProfit ? (realProfit>0?'+':'')+fmt(realProfit) : '-';
+  rpEl.className    = 'is-value ' + (realProfit>0?'profit-pos':realProfit<0?'profit-neg':'');
+  document.getElementById('isRealCount').textContent   = `매도 ${sells.length}건`;
+  document.getElementById('isHoldingCount').textContent = stockHoldings.filter(h=>h.quantity>0).length;
+}
+
+function renderHoldings(){
+  const el = document.getElementById('holdingsList');
+  if(!stockHoldings.length){
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">📊</div><div class="empty-text">보유 종목을 추가해보세요</div><div class="empty-sub">+ 종목 추가 버튼을 눌러 등록하세요</div></div>`;
+    return;
+  }
+  el.innerHTML = stockHoldings.map(h=>{
+    const evalAmt   = h.current_price * h.quantity;
+    const investAmt = h.avg_price * h.quantity;
+    const profit    = evalAmt - investAmt;
+    const pct       = investAmt > 0 ? (profit / investAmt * 100) : 0;
+    const pCls      = profit > 0 ? 'profit-pos' : profit < 0 ? 'profit-neg' : '';
+    const pSign     = profit > 0 ? '+' : '';
+    return `<div class="holding-card">
+      <div class="holding-name">
+        <span>${h.name}</span>
+        <div style="display:flex;gap:6px">
+          <button onclick="openHoldingModal('${h.id}')" style="font-size:11px;padding:4px 10px;border-radius:6px;background:var(--amber-dim);color:var(--amber);border:1px solid rgba(245,158,11,.3);cursor:pointer;font-weight:600">수정</button>
+          <button onclick="deleteHolding('${h.id}')" style="font-size:11px;padding:4px 10px;border-radius:6px;background:var(--red-dim);color:var(--red);border:1px solid rgba(239,68,68,.3);cursor:pointer;font-weight:600">삭제</button>
+        </div>
+      </div>
+      <div class="holding-row"><span>보유수량</span><span>${Number(h.quantity).toLocaleString()}주</span></div>
+      <div class="holding-row"><span>평균단가</span><span>${fmt(h.avg_price)}</span></div>
+      <div class="holding-row"><span>현재가</span><span>${fmt(h.current_price)}</span></div>
+      <div class="holding-row"><span>평가금액</span><span>${fmt(evalAmt)}</span></div>
+      <div class="holding-profit ${pCls}">
+        평가손익 ${pSign}${fmt(profit)} <span style="font-size:13px;font-weight:500">(${pSign}${pct.toFixed(1)}%)</span>
+        ${h.memo ? `<div style="font-size:11px;color:var(--text3);font-weight:400;margin-top:4px">📝 ${h.memo}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderTrades(){
+  const el = document.getElementById('tradesList');
+  if(!stockTrades.length){
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">매매 내역이 없습니다</div><div class="empty-sub">매수/매도를 기록해보세요</div></div>`;
+    return;
+  }
+  el.innerHTML = stockTrades.map(t=>{
+    const isBuy  = t.trade_type === 'buy';
+    const total  = t.quantity * t.price;
+    const profitHTML = (!isBuy && t.realized_profit)
+      ? `<div style="margin-top:5px;font-size:12px;font-weight:700;${t.realized_profit>0?'color:var(--green)':'color:var(--red)'}">
+           실현손익 ${t.realized_profit>0?'+':''}${fmt(t.realized_profit)}
+         </div>` : '';
+    return `<div class="trade-item">
+      <div class="trade-header">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="${isBuy?'buy-badge':'sell-badge'}">${isBuy?'매수':'매도'}</span>
+          <span class="trade-name">${t.stock_name}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:14px;font-weight:700;${isBuy?'':'color:var(--red)'}">${isBuy?'':'-'}${fmt(total)}</span>
+          <button onclick="deleteTrade('${t.id}')" style="font-size:11px;padding:3px 8px;border-radius:6px;background:var(--red-dim);color:var(--red);border:1px solid rgba(239,68,68,.3);cursor:pointer;font-weight:600">삭제</button>
+        </div>
+      </div>
+      <div class="trade-meta">${t.date} · ${Number(t.quantity).toLocaleString()}주 × ${fmt(t.price)}${t.memo?' · '+t.memo:''}</div>
+      ${profitHTML}
+    </div>`;
+  }).join('');
+}
+
+function switchInvestTab(tab){
+  investSubTab = tab;
+  document.getElementById('investHoldingsView').classList.toggle('hidden', tab!=='holdings');
+  document.getElementById('investTradesView').classList.toggle('hidden', tab!=='trades');
+  document.getElementById('subtabHoldings').classList.toggle('active', tab==='holdings');
+  document.getElementById('subtabTrades').classList.toggle('active', tab==='trades');
+}
+
+// ─── 종목 추가/수정 모달 ───
+function openHoldingModal(id){
+  editingHoldingId = id || null;
+  const h = id ? stockHoldings.find(x=>x.id===id) : null;
+  document.getElementById('holdingModalTitle').textContent = h ? '종목 수정' : '종목 추가';
+  document.getElementById('holdingName').value         = h ? h.name : '';
+  document.getElementById('holdingQty').value          = h ? h.quantity : '';
+  document.getElementById('holdingAvgPrice').value     = h ? h.avg_price : '';
+  document.getElementById('holdingCurrentPrice').value = h ? h.current_price : '';
+  document.getElementById('holdingMemo').value         = h ? h.memo||'' : '';
+  document.getElementById('holdingName').disabled      = !!h; // 수정 시 종목명 잠금
+  document.getElementById('holdingModal').classList.add('open');
+}
+function closeHoldingModal(){
+  document.getElementById('holdingModal').classList.remove('open');
+  editingHoldingId = null;
+}
+document.getElementById('btnHoldingClose').addEventListener('click', closeHoldingModal);
+document.getElementById('holdingModal').addEventListener('click', e=>{
+  if(e.target===document.getElementById('holdingModal')) closeHoldingModal();
+});
+
+document.getElementById('btnHoldingSave').addEventListener('click', async ()=>{
+  const btn  = document.getElementById('btnHoldingSave');
+  const name = document.getElementById('holdingName').value.trim();
+  const qty  = parseFloat(document.getElementById('holdingQty').value);
+  const avg  = parseFloat(document.getElementById('holdingAvgPrice').value);
+  const cur  = parseFloat(document.getElementById('holdingCurrentPrice').value);
+  const memo = document.getElementById('holdingMemo').value.trim();
+  if(!name || isNaN(qty) || isNaN(avg) || isNaN(cur)){
+    showToast('종목명, 주수, 단가를 모두 입력해주세요', 'error'); return;
+  }
+  btn.disabled=true; btn.textContent='저장 중...';
+  try {
+    if(editingHoldingId){
+      const { error } = await supa.from('stock_holdings').update({
+        quantity:qty, avg_price:avg, current_price:cur, memo:memo||null
+      }).eq('id', editingHoldingId);
+      if(error) throw new Error(error.message);
+    } else {
+      const { error } = await supa.from('stock_holdings').insert({
+        name, quantity:qty, avg_price:avg, current_price:cur,
+        memo:memo||null, user_id:currentUser.id
+      });
+      if(error) throw new Error(error.message);
+    }
+    showToast('✅ 저장됐습니다', 'success');
+    closeHoldingModal();
+    await loadHoldings();
+    renderInvest();
+  } catch(e){
+    showToast('저장 실패: '+e.message, 'error');
+  } finally {
+    btn.disabled=false; btn.textContent='저장';
+  }
+});
+
+async function deleteHolding(id){
+  if(!confirm('종목을 삭제할까요? 매매 내역은 유지됩니다.')) return;
+  const { error } = await supa.from('stock_holdings').delete().eq('id', id);
+  if(error){ showToast('삭제 실패', 'error'); return; }
+  showToast('삭제됐습니다');
+  await loadHoldings();
+  renderInvest();
+}
+
+// ─── 매매 기록 모달 ───
+function setTradeType(type){
+  tradeTypeSelected = type;
+  const isBuy = type === 'buy';
+  document.getElementById('tradeBuy').style.cssText  = `flex:1;padding:9px;border-radius:9px;font-size:13px;font-weight:700;transition:all .15s;cursor:pointer;border:2px solid ${isBuy?'var(--green)':'var(--border2)'};background:${isBuy?'rgba(34,197,94,.12)':'var(--surface2)'};color:${isBuy?'var(--green)':'var(--text3)'}`;
+  document.getElementById('tradeSell').style.cssText = `flex:1;padding:9px;border-radius:9px;font-size:13px;font-weight:700;transition:all .15s;cursor:pointer;border:2px solid ${!isBuy?'var(--red)':'var(--border2)'};background:${!isBuy?'rgba(239,68,68,.12)':'var(--surface2)'};color:${!isBuy?'var(--red)':'var(--text3)'}`;
+  const saveBtn = document.getElementById('btnTradeSave');
+  saveBtn.textContent     = isBuy ? '📈 매수 기록' : '📉 매도 기록';
+  saveBtn.style.background = isBuy ? 'var(--green)' : 'var(--red)';
+}
+document.getElementById('tradeBuy').addEventListener('click',  ()=>setTradeType('buy'));
+document.getElementById('tradeSell').addEventListener('click', ()=>setTradeType('sell'));
+
+function openTradeModal(){
+  document.getElementById('tradeDate').value  = today();
+  document.getElementById('tradeName').value  = '';
+  document.getElementById('tradeQty').value   = '';
+  document.getElementById('tradePrice').value = '';
+  document.getElementById('tradeMemo').value  = '';
+  setTradeType('buy');
+  // 종목명 자동완성
+  document.getElementById('tradeNameList').innerHTML =
+    stockHoldings.map(h=>`<option value="${h.name}">`).join('');
+  document.getElementById('tradeModal').classList.add('open');
+}
+function closeTradeModal(){
+  document.getElementById('tradeModal').classList.remove('open');
+}
+document.getElementById('btnTradeClose').addEventListener('click', closeTradeModal);
+document.getElementById('tradeModal').addEventListener('click', e=>{
+  if(e.target===document.getElementById('tradeModal')) closeTradeModal();
+});
+
+document.getElementById('btnTradeSave').addEventListener('click', async ()=>{
+  const btn   = document.getElementById('btnTradeSave');
+  const date  = document.getElementById('tradeDate').value;
+  const name  = document.getElementById('tradeName').value.trim();
+  const qty   = parseFloat(document.getElementById('tradeQty').value);
+  const price = parseFloat(document.getElementById('tradePrice').value);
+  const memo  = document.getElementById('tradeMemo').value.trim();
+  const type  = tradeTypeSelected;
+
+  if(!date||!name||isNaN(qty)||qty<=0||isNaN(price)||price<=0){
+    showToast('모든 항목을 입력해주세요', 'error'); return;
+  }
+  btn.disabled=true; btn.textContent='저장 중...';
+
+  try {
+    let realizedProfit = 0;
+    const holding = stockHoldings.find(h=>h.name===name);
+
+    if(type === 'buy'){
+      if(holding){
+        // 평균단가 재계산
+        const newQty = holding.quantity + qty;
+        const newAvg = (holding.quantity * holding.avg_price + qty * price) / newQty;
+        const { error } = await supa.from('stock_holdings').update({
+          quantity: newQty, avg_price: Math.round(newAvg * 100) / 100
+        }).eq('id', holding.id);
+        if(error) throw new Error(error.message);
+      } else {
+        // 새 종목 자동 등록
+        const { error } = await supa.from('stock_holdings').insert({
+          name, quantity:qty, avg_price:price, current_price:price,
+          user_id: currentUser.id
+        });
+        if(error) throw new Error(error.message);
+      }
+    } else {
+      // 매도
+      if(!holding){
+        showToast('보유 종목이 없습니다. 먼저 종목을 추가해주세요', 'error');
+        btn.disabled=false; btn.textContent='📉 매도 기록'; return;
+      }
+      if(holding.quantity < qty){
+        showToast(`보유 수량(${holding.quantity}주)이 부족합니다`, 'error');
+        btn.disabled=false; btn.textContent='📉 매도 기록'; return;
+      }
+      realizedProfit = Math.round((price - holding.avg_price) * qty);
+      const newQty = Math.round((holding.quantity - qty) * 10000) / 10000;
+      const { error } = await supa.from('stock_holdings').update({
+        quantity: newQty
+      }).eq('id', holding.id);
+      if(error) throw new Error(error.message);
+    }
+
+    // 매매 기록 저장
+    const { error: tradeErr } = await supa.from('stock_trades').insert({
+      stock_name:name, trade_type:type, quantity:qty, price,
+      date, memo:memo||null, realized_profit:realizedProfit,
+      user_id: currentUser.id
+    });
+    if(tradeErr) throw new Error(tradeErr.message);
+
+    const msg = type==='buy'
+      ? `📈 ${name} ${qty}주 매수 기록됐습니다`
+      : `📉 ${name} ${qty}주 매도 · 실현손익 ${realizedProfit>=0?'+':''}${fmt(realizedProfit)}`;
+    showToast(msg, 'success');
+    closeTradeModal();
+    await loadStockData();
+  } catch(e){
+    showToast('저장 실패: '+e.message, 'error');
+  } finally {
+    btn.disabled=false;
+    btn.textContent = tradeTypeSelected==='buy' ? '📈 매수 기록' : '📉 매도 기록';
+  }
+});
+
+async function deleteTrade(id){
+  if(!confirm('매매 내역을 삭제할까요?\n보유 수량은 자동으로 되돌아가지 않습니다.')) return;
+  const { error } = await supa.from('stock_trades').delete().eq('id', id);
+  if(error){ showToast('삭제 실패', 'error'); return; }
+  showToast('삭제됐습니다');
+  await loadTrades();
+  renderInvest();
+}
 </script>
 </body>
 </html>
