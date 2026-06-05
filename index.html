@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- physico-wallet v2.20 -->
+<!-- physico-wallet v2.21 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -486,21 +486,17 @@ input,select,textarea{font-family:inherit}
 <!-- ════ 탭: 입력 ════ -->
 <div class="content" id="tab-input">
 
-  <!-- 고정비 미추가 배너 -->
+  <!-- 예정 지출 배너 -->
   <div id="recurringBanner" class="hidden" style="
-    background:linear-gradient(135deg,rgba(99,102,241,.12),rgba(99,102,241,.06));
-    border:1px solid rgba(99,102,241,.3);border-radius:13px;
-    padding:14px;margin-bottom:14px;
+    background:linear-gradient(135deg,rgba(99,102,241,.08),rgba(99,102,241,.04));
+    border:1px solid rgba(99,102,241,.25);border-radius:13px;
+    padding:12px 14px;margin-bottom:14px;
   ">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-      <div style="font-size:13px;font-weight:700;color:var(--indigo)">🔒 이번 달 고정비</div>
+      <div style="font-size:12px;font-weight:700;color:var(--indigo)">📅 이번 달 예정</div>
       <span id="recurringPendingCount" style="font-size:11px;color:var(--text3);font-weight:600"></span>
     </div>
-    <div id="recurringPendingList" style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.7"></div>
-    <button id="btnAddAllRecurring" style="
-      width:100%;padding:10px;background:var(--indigo);color:#fff;
-      border-radius:9px;font-size:13px;font-weight:700;border:none;cursor:pointer;
-    ">한꺼번에 추가</button>
+    <div id="recurringPendingList" style="font-size:12px;color:var(--text2);line-height:1.9"></div>
   </div>
 
   <div class="section">
@@ -2000,7 +1996,7 @@ document.getElementById('btnSave').addEventListener('click', async ()=>{
 // ══════════════════════════════════════════════════════════
 // 지출 로드
 // ══════════════════════════════════════════════════════════
-async function loadExpenses(skipAutoInstall = false){
+async function loadExpenses(skipAutoAdd = false){
   if(!currentUser) return;
   const start = monthStart(currentMonth).toISOString().split('T')[0];
   const end   = monthEnd(currentMonth).toISOString().split('T')[0];
@@ -2016,14 +2012,15 @@ async function loadExpenses(skipAutoInstall = false){
   expenses = data || [];
   await loadActiveInstallments();
 
-  // 이번 달 할부 자동 삽입 (현재 달만)
-  if(!skipAutoInstall){
+  // 이번 달 자동 지출 삽입 (할부 + 고정비 + 저축이체)
+  if(!skipAutoAdd){
     const today = new Date();
     const isThisMonth = currentMonth.getFullYear() === today.getFullYear()
                      && currentMonth.getMonth()    === today.getMonth();
     if(isThisMonth){
-      const added = await autoAddDueInstallments();
-      if(added) return loadExpenses(true); // 추가됐으면 한 번 더 로드
+      const a1 = await autoAddDueInstallments();
+      const a2 = await autoAddDueRecurring();
+      if(a1 || a2) return loadExpenses(true);
     }
   }
 
@@ -2036,31 +2033,86 @@ async function loadExpenses(skipAutoInstall = false){
 async function autoAddDueInstallments(){
   const y = currentMonth.getFullYear();
   const m = currentMonth.getMonth();
-  const monthStr = `${y}-${String(m+1).padStart(2,'0')}`;
+  const monthStr    = `${y}-${String(m+1).padStart(2,'0')}`;
   const daysInMonth = new Date(y, m+1, 0).getDate();
 
   const pending = getInstallmentPending(y, m, monthStr);
   if(!pending.length) return false;
 
   const rows = pending.map(orig => {
-    const opd = new Date(orig.date + 'T00:00:00');
+    const opd     = new Date(orig.date + 'T00:00:00');
     const elapsed = (y - opd.getFullYear()) * 12 + (m - opd.getMonth());
     const payNum  = elapsed + 1;
     const day     = Math.min(opd.getDate(), daysInMonth);
     return {
-      date:      `${monthStr}-${String(day).padStart(2,'0')}`,
-      merchant:  orig.merchant,
-      amount:    orig.amount,
-      category:  orig.category,
-      card:      orig.card,
-      is_income: false,
-      installment: 0,
-      memo:      `할부 ${payNum}/${orig.installment}회`,
-      user_id:   currentUser.id
+      date: `${monthStr}-${String(day).padStart(2,'0')}`,
+      merchant: orig.merchant, amount: orig.amount,
+      category: orig.category, card: orig.card,
+      is_income: false, installment: 0,
+      memo: `할부 ${payNum}/${orig.installment}회`,
+      user_id: currentUser.id
     };
   });
+  const { error } = await supa.from('expenses').insert(rows);
+  return !error;
+}
+
+async function autoAddDueRecurring(){
+  if(!currentUser) return false;
+  const today       = new Date();
+  const y           = today.getFullYear();
+  const m           = today.getMonth();
+  const todayDate   = today.getDate();
+  const monthStr    = `${y}-${String(m+1).padStart(2,'0')}`;
+  const daysInMonth = new Date(y, m+1, 0).getDate();
+
+  // 이미 이번 달인지 확인 (currentMonth 기준)
+  const isThisMonth = currentMonth.getFullYear() === y && currentMonth.getMonth() === m;
+  if(!isThisMonth) return false;
+
+  // 고정비 중 오늘 이전 날짜 && 아직 이번 달 미추가
+  const dueFixed = recurringExpenses.filter(r => {
+    const day = Math.min(r.day_of_month, daysInMonth);
+    return day <= todayDate &&
+      !expenses.some(e => e.merchant === r.name && e.date.startsWith(monthStr));
+  });
+
+  // 저축 자동이체 중 오늘 이전 날짜 && 미추가
+  const dueSavings = savingsItems.filter(s => {
+    if(!s.is_auto_transfer) return false;
+    const day = Math.min(s.auto_transfer_day || 1, daysInMonth);
+    return day <= todayDate &&
+      !expenses.some(e => e.merchant === s.name && e.date.startsWith(monthStr) && e.category === '저축/연금');
+  });
+
+  if(!dueFixed.length && !dueSavings.length) return false;
+
+  const rows = [
+    ...dueFixed.map(r => {
+      const day = Math.min(r.day_of_month, daysInMonth);
+      return { date: `${monthStr}-${String(day).padStart(2,'0')}`,
+        merchant: r.name, amount: r.amount,
+        category: r.category, card: r.card || null,
+        is_income: false, installment: 0, user_id: currentUser.id };
+    }),
+    ...dueSavings.map(s => {
+      const day = Math.min(s.auto_transfer_day || 1, daysInMonth);
+      return { date: `${monthStr}-${String(day).padStart(2,'0')}`,
+        merchant: s.name, amount: s.monthly_amount,
+        category: '저축/연금', card: null,
+        is_income: false, installment: 0, user_id: currentUser.id };
+    })
+  ];
 
   const { error } = await supa.from('expenses').insert(rows);
+  if(!error && dueSavings.length){
+    for(const s of dueSavings){
+      await supa.from('savings').update({
+        current_balance: (s.current_balance || 0) + s.monthly_amount
+      }).eq('id', s.id);
+    }
+    loadSavings();
+  }
   return !error;
 }
 
@@ -2581,95 +2633,49 @@ function getInstallmentPending(y, m, monthStr){
 }
 
 function checkPendingRecurring(){
-  const banner = document.getElementById('recurringBanner');
+  const banner      = document.getElementById('recurringBanner');
+  const today       = new Date();
+  const y           = currentMonth.getFullYear();
+  const m           = currentMonth.getMonth();
+  const monthStr    = `${y}-${String(m+1).padStart(2,'0')}`;
+  const daysInMonth = new Date(y, m+1, 0).getDate();
+  const isThisMonth = y === today.getFullYear() && m === today.getMonth();
+  const todayDate   = isThisMonth ? today.getDate() : 0;
 
-  const y = currentMonth.getFullYear();
-  const m = currentMonth.getMonth();
-  const monthStr = `${y}-${String(m+1).padStart(2,'0')}`;
+  // 아직 미추가 + 오늘 이후 예정인 항목만 (자동 추가 대상 아님)
+  const upcomingFixed = recurringExpenses.filter(r => {
+    const day = Math.min(r.day_of_month, daysInMonth);
+    return day > todayDate &&
+      !expenses.some(e => e.merchant === r.name && e.date.startsWith(monthStr));
+  });
+  const upcomingSavings = savingsItems.filter(s => {
+    if(!s.is_auto_transfer) return false;
+    const day = Math.min(s.auto_transfer_day || 1, daysInMonth);
+    return day > todayDate &&
+      !expenses.some(e => e.merchant === s.name && e.date.startsWith(monthStr) && e.category === '저축/연금');
+  });
 
-  const pendingFixed = recurringExpenses.filter(r =>
-    !expenses.some(e => e.merchant === r.name && e.date.startsWith(monthStr))
-  );
-  const autoSavings = savingsItems.filter(s => s.is_auto_transfer);
-  const pendingSavings = autoSavings.filter(s =>
-    !expenses.some(e => e.merchant === s.name && e.date.startsWith(monthStr) && e.category === '저축/연금')
-  );
-  const totalPending = pendingFixed.length + pendingSavings.length;
-  if(!totalPending){ banner.classList.add('hidden'); return; }
+  const total = upcomingFixed.length + upcomingSavings.length;
+  if(!total){ banner.classList.add('hidden'); return; }
 
   banner.classList.remove('hidden');
-  document.getElementById('recurringPendingCount').textContent = `${totalPending}건 미추가`;
+  document.getElementById('recurringPendingCount').textContent = `${total}건`;
 
   const lines = [
-    ...pendingFixed.map(r =>
-      `<span style="display:inline-block">• ${r.name} <strong>${fmt(r.amount)}</strong></span>`),
-    ...pendingSavings.map(s =>
-      `<span style="display:inline-block">• 💰 ${s.name} <strong>${fmt(s.monthly_amount)}</strong></span>`)
-  ];
+    ...upcomingFixed.map(r => {
+      const day = Math.min(r.day_of_month, daysInMonth);
+      return { day, html: `<span>• <span style="color:var(--indigo);font-weight:700;min-width:26px;display:inline-block">${day}일</span> ${r.name} <strong>${fmt(r.amount)}</strong></span>` };
+    }),
+    ...upcomingSavings.map(s => {
+      const day = Math.min(s.auto_transfer_day || 1, daysInMonth);
+      return { day, html: `<span>• <span style="color:var(--indigo);font-weight:700;min-width:26px;display:inline-block">${day}일</span> 💰 ${s.name} <strong>${fmt(s.monthly_amount)}</strong></span>` };
+    })
+  ].sort((a,b) => a.day - b.day).map(x => x.html);
+
   document.getElementById('recurringPendingList').innerHTML = lines.join('<br>');
 }
 
-async function addAllPendingRecurring(){
-  const y = currentMonth.getFullYear();
-  const m = currentMonth.getMonth();
-  const monthStr = `${y}-${String(m+1).padStart(2,'0')}`;
-
-  const pendingFixed = recurringExpenses.filter(r =>
-    !expenses.some(e => e.merchant === r.name && e.date.startsWith(monthStr))
-  );
-  const autoSavings = savingsItems.filter(s => s.is_auto_transfer);
-  const pendingSavings = autoSavings.filter(s =>
-    !expenses.some(e => e.merchant === s.name && e.date.startsWith(monthStr) && e.category === '저축/연금')
-  );
-
-  if(!pendingFixed.length && !pendingSavings.length) return;
-
-  const btn = document.getElementById('btnAddAllRecurring');
-  btn.disabled = true; btn.textContent = '추가 중...';
-  try {
-    const daysInMonth = new Date(y, m+1, 0).getDate();
-
-    // 고정비 rows
-    const fixedRows = pendingFixed.map(r => {
-      const day = Math.min(r.day_of_month, daysInMonth);
-      const date = `${monthStr}-${String(day).padStart(2,'0')}`;
-      return { date, merchant: r.name, amount: r.amount,
-        category: r.category, card: r.card || null,
-        is_income: false, installment: 0, user_id: currentUser.id };
-    });
-
-    // 저축 납입 rows
-    const savingsRows = pendingSavings.map(s => {
-      const day = s.auto_transfer_day ? Math.min(s.auto_transfer_day, daysInMonth) : 1;
-      const date = `${monthStr}-${String(day).padStart(2,'0')}`;
-      return { date, merchant: s.name, amount: s.monthly_amount,
-        category: '저축/연금', card: null,
-        is_income: false, installment: 0, user_id: currentUser.id };
-    });
-
-    const allRows = [...fixedRows, ...savingsRows];
-    if(allRows.length){
-      const { error } = await supa.from('expenses').insert(allRows);
-      if(error) throw new Error(error.message);
-    }
-
-    // 저축 잔액 자동 증가
-    for(const s of pendingSavings){
-      await supa.from('savings').update({
-        current_balance: (s.current_balance || 0) + s.monthly_amount
-      }).eq('id', s.id);
-    }
-
-    const total = pendingFixed.length + pendingSavings.length;
-    showToast(`${total}건 추가됐습니다 ✅`, 'success');
-    await loadExpenses();
-    if(pendingSavings.length) await loadSavings();
-  } catch(e){
-    showToast('추가 실패: '+e.message, 'error');
-  } finally {
-    btn.disabled = false; btn.textContent = '한꺼번에 추가';
-  }
-}
+// addAllPendingRecurring 제거 — autoAddDueRecurring()으로 대체됨
 
 async function addRecurring(){
   const name   = document.getElementById('recurringName').value.trim();
