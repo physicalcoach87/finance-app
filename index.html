@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- physico-wallet v2.18 -->
+<!-- physico-wallet v2.19 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -570,10 +570,11 @@ input,select,textarea{font-family:inherit}
 
       <!-- 금액 -->
       <div class="form-group">
-        <label>금액</label>
+        <label>금액 <span id="installmentAmountLabel" style="font-size:10px;color:var(--text3)">(총액 입력)</span></label>
         <div class="amount-unit">
           <input type="number" id="inAmount" class="amount-input" placeholder="0" min="0" inputmode="numeric">
         </div>
+        <div id="installmentHint" class="hidden" style="margin-top:6px;font-size:12px;color:var(--indigo);font-weight:600;padding:6px 10px;background:var(--indigo-dim);border-radius:7px"></div>
       </div>
 
       <!-- 가맹점/내역 -->
@@ -1602,6 +1603,7 @@ async function afterLogin(){
   updateMonthLabel();
   await loadUserCards();
   await loadSavings();
+  await loadActiveInstallments();
   await loadRecurringExpenses();
   loadExpenses();
   // 잠금이 설정되어 있으면 잠금 화면 표시
@@ -1886,12 +1888,32 @@ document.querySelectorAll('#catChips .cat-chip').forEach(chip=>{
 // ══════════════════════════════════════════════════════════
 let selectedInstallment = 0; // 0 = 일시불
 
+function updateInstallmentHint(){
+  const total = parseInt(document.getElementById('inAmount').value) || 0;
+  const months = selectedInstallment;
+  const hint   = document.getElementById('installmentHint');
+  const label  = document.getElementById('installmentAmountLabel');
+  if(months > 1 && total > 0){
+    const monthly = Math.round(total / months);
+    hint.textContent = `월 ${monthly.toLocaleString('ko-KR')}원 × ${months}개월 = 총 ${total.toLocaleString('ko-KR')}원`;
+    hint.classList.remove('hidden');
+    label.textContent = '(총액 입력)';
+    label.style.color = 'var(--indigo)';
+  } else {
+    hint.classList.add('hidden');
+    label.textContent = '';
+  }
+}
+
+document.getElementById('inAmount').addEventListener('input', updateInstallmentHint);
+
 document.getElementById('installmentChips').addEventListener('click', e=>{
   const chip = e.target.closest('.install-chip');
   if(!chip) return;
   document.querySelectorAll('#installmentChips .install-chip').forEach(c=>c.classList.remove('active'));
   chip.classList.add('active');
   selectedInstallment = parseInt(chip.dataset.val)||0;
+  updateInstallmentHint();
 });
 
 function resetInstallment(){
@@ -1928,14 +1950,16 @@ document.getElementById('btnSave').addEventListener('click', async ()=>{
     return;
   }
 
-  const date     = document.getElementById('inDate').value;
-  const amount   = parseInt(document.getElementById('inAmount').value);
-  const merchant = document.getElementById('inMerchant').value.trim();
-  const memo     = document.getElementById('inMemo').value.trim();
-  const isIncome = inputType === 'income';
-  const card     = isIncome ? null : document.getElementById('inCard').value;
-  const category = isIncome ? '수입' : selectedCat;
+  const date        = document.getElementById('inDate').value;
+  const totalAmount = parseInt(document.getElementById('inAmount').value);
+  const merchant    = document.getElementById('inMerchant').value.trim();
+  const memo        = document.getElementById('inMemo').value.trim();
+  const isIncome    = inputType === 'income';
+  const card        = isIncome ? null : document.getElementById('inCard').value;
+  const category    = isIncome ? '수입' : selectedCat;
   const installment = isIncome ? 0 : selectedInstallment;
+  // 할부 시 월 납부금으로 변환 (총액 ÷ 개월수)
+  const amount = (installment > 1) ? Math.round(totalAmount / installment) : totalAmount;
 
   if(!date || !amount || !merchant){
     showToast('날짜, 금액, 내역을 입력해주세요', 'error');
@@ -1990,6 +2014,7 @@ async function loadExpenses(){
 
   if(error){ expenses = []; return; }
   expenses = data || [];
+  await loadActiveInstallments(); // 할부 목록 갱신
   renderTodayList();
   checkPendingRecurring();
   // 내역/분석 탭이 열려있으면 갱신
@@ -2097,8 +2122,8 @@ function expenseItemHTML(e){
       <div class="expense-merchant">${e.merchant}</div>
       <div class="expense-meta">
         <span class="cat-dot" style="background:${color}"></span>
-        ${e.category}${e.card ? ' · '+e.card : ''}${e.installment > 0 ? ` · ${e.installment}개월 할부` : ''}
-        ${e.memo ? `· ${e.memo}` : ''}
+        ${e.category}${e.card ? ' · '+e.card : ''}${e.installment > 1 ? ` · 📳 할부 1/${e.installment}회` : ''}
+        ${e.memo ? `· <span style="color:var(--text3)">${e.memo}</span>` : ''}
         ${badge}
       </div>
     </div>
@@ -2497,6 +2522,22 @@ async function loadRecurringExpenses(){
   checkPendingRecurring();
 }
 
+function getInstallmentPending(y, m, monthStr){
+  return installmentExpenses.filter(orig => {
+    const pd = new Date(orig.date + 'T00:00:00');
+    const elapsed = (y - pd.getFullYear()) * 12 + (m - pd.getMonth());
+    if(elapsed <= 0 || elapsed >= orig.installment) return false;
+    // 이번 달 이미 납부됐는지 확인 (memo에 "할부" 포함 + 같은 가맹점 + 같은 카드)
+    return !expenses.some(e =>
+      e.merchant === orig.merchant &&
+      e.card === orig.card &&
+      e.date.startsWith(monthStr) &&
+      e.installment === 0 &&
+      e.amount === orig.amount
+    );
+  });
+}
+
 function checkPendingRecurring(){
   const banner = document.getElementById('recurringBanner');
 
@@ -2507,21 +2548,30 @@ function checkPendingRecurring(){
   const pendingFixed = recurringExpenses.filter(r =>
     !expenses.some(e => e.merchant === r.name && e.date.startsWith(monthStr))
   );
-
   const autoSavings = savingsItems.filter(s => s.is_auto_transfer);
   const pendingSavings = autoSavings.filter(s =>
     !expenses.some(e => e.merchant === s.name && e.date.startsWith(monthStr) && e.category === '저축/연금')
   );
+  const pendingInst = getInstallmentPending(y, m, monthStr);
 
-  const totalPending = pendingFixed.length + pendingSavings.length;
+  const totalPending = pendingFixed.length + pendingSavings.length + pendingInst.length;
   if(!totalPending){ banner.classList.add('hidden'); return; }
 
   banner.classList.remove('hidden');
   document.getElementById('recurringPendingCount').textContent = `${totalPending}건 미추가`;
 
+  const pd = new Date(); const cy = pd.getFullYear(); const cm = pd.getMonth();
   const lines = [
-    ...pendingFixed.map(r => `<span style="display:inline-block">• ${r.name} <strong>${fmt(r.amount)}</strong></span>`),
-    ...pendingSavings.map(s => `<span style="display:inline-block">• 💰 ${s.name} <strong>${fmt(s.monthly_amount)}</strong></span>`)
+    ...pendingFixed.map(r =>
+      `<span style="display:inline-block">• ${r.name} <strong>${fmt(r.amount)}</strong></span>`),
+    ...pendingSavings.map(s =>
+      `<span style="display:inline-block">• 💰 ${s.name} <strong>${fmt(s.monthly_amount)}</strong></span>`),
+    ...pendingInst.map(orig => {
+      const opd = new Date(orig.date + 'T00:00:00');
+      const elapsed = (y - opd.getFullYear()) * 12 + (m - opd.getMonth());
+      const cur = elapsed + 1;
+      return `<span style="display:inline-block">• 📳 ${orig.merchant} <strong>${fmt(orig.amount)}</strong> <span style="color:var(--text3)">(${cur}/${orig.installment}회)</span></span>`;
+    })
   ];
   document.getElementById('recurringPendingList').innerHTML = lines.join('<br>');
 }
@@ -2564,7 +2614,22 @@ async function addAllPendingRecurring(){
         is_income: false, installment: 0, user_id: currentUser.id };
     });
 
-    const allRows = [...fixedRows, ...savingsRows];
+    // 할부 납부 rows
+    const pendingInst = getInstallmentPending(y, m, monthStr);
+    const instRows = pendingInst.map(orig => {
+      const opd = new Date(orig.date + 'T00:00:00');
+      const elapsed = (y - opd.getFullYear()) * 12 + (m - opd.getMonth());
+      const payNum = elapsed + 1;
+      const day = Math.min(opd.getDate(), daysInMonth);
+      const date = `${monthStr}-${String(day).padStart(2,'0')}`;
+      return { date, merchant: orig.merchant, amount: orig.amount,
+        category: orig.category, card: orig.card,
+        is_income: false, installment: 0,
+        memo: `할부 ${payNum}/${orig.installment}회`,
+        user_id: currentUser.id };
+    });
+
+    const allRows = [...fixedRows, ...savingsRows, ...instRows];
     if(allRows.length){
       const { error } = await supa.from('expenses').insert(allRows);
       if(error) throw new Error(error.message);
@@ -3392,6 +3457,22 @@ async function deleteTrade(id){
 // ══════════════════════════════════════════════════════════
 // 저축/연금 관리
 // ══════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
+// 할부 추적
+// ══════════════════════════════════════════════════════════
+let installmentExpenses = [];
+
+async function loadActiveInstallments(){
+  if(!currentUser) return;
+  const { data } = await supa.from('expenses')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .gt('installment', 1)
+    .eq('is_income', false)
+    .order('date', { ascending: false });
+  installmentExpenses = data || [];
+}
+
 let savingsItems = [];
 let editingSavingsId = null;
 
