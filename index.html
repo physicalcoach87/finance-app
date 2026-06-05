@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- physico-wallet v2.22.1 -->
+<!-- physico-wallet v2.23 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -1019,11 +1019,10 @@ input,select,textarea{font-family:inherit}
   <div style="font-size:20px;font-weight:800;letter-spacing:-.5px;margin-bottom:6px">Physico Wallet</div>
   <div style="font-size:13px;color:var(--text3);margin-bottom:36px" id="lockSubtitle">PIN 번호를 입력해주세요</div>
 
-  <!-- PIN 도트 6개 -->
-  <div style="display:flex;gap:16px;margin-bottom:10px" id="pinDots">
+  <!-- PIN 도트 4개 -->
+  <div style="display:flex;gap:20px;margin-bottom:10px" id="pinDots">
     <div class="pin-dot" id="pd0"></div><div class="pin-dot" id="pd1"></div>
     <div class="pin-dot" id="pd2"></div><div class="pin-dot" id="pd3"></div>
-    <div class="pin-dot" id="pd4"></div><div class="pin-dot" id="pd5"></div>
   </div>
   <div id="pinError" style="font-size:12px;color:var(--red);height:20px;margin-bottom:24px;text-align:center"></div>
 
@@ -1411,7 +1410,7 @@ function hideLock(){ document.getElementById('lockScreen').style.display = 'none
 
 function resetPinDots(){
   lockInput = '';
-  for(let i=0;i<6;i++) document.getElementById('pd'+i)?.classList.remove('filled');
+  for(let i=0;i<4;i++) document.getElementById('pd'+i)?.classList.remove('filled');
 }
 
 // 숫자패드 탭
@@ -1430,10 +1429,10 @@ async function onPinKey(k){
     }
     return;
   }
-  if(lockInput.length>=6) return;
+  if(lockInput.length>=4) return;
   lockInput += k;
   document.getElementById('pd'+(lockInput.length-1))?.classList.add('filled');
-  if(lockInput.length===6) setTimeout(handlePinComplete, 80);
+  if(lockInput.length===4) setTimeout(handlePinComplete, 80);
 }
 
 async function handlePinComplete(){
@@ -1454,7 +1453,7 @@ async function handlePinComplete(){
     } else {
       document.getElementById('pinError').textContent = 'PIN이 일치하지 않아요. 다시 설정해주세요';
       lockMode = 'setup'; pendingPin = '';
-      document.getElementById('lockSubtitle').textContent = '새 PIN 번호를 입력하세요 (6자리)';
+      document.getElementById('lockSubtitle').textContent = '새 PIN 번호를 입력하세요 (4자리)';
       setTimeout(resetPinDots, 700);
     }
   } else {
@@ -1515,7 +1514,7 @@ function openPinSetup(){
   lockMode = 'setup'; lockInput = ''; pendingPin = '';
   resetPinDots();
   document.getElementById('pinError').textContent = '';
-  document.getElementById('lockSubtitle').textContent = '새 PIN 번호를 입력하세요 (6자리)';
+  document.getElementById('lockSubtitle').textContent = '새 PIN 번호를 입력하세요 (4자리)';
   document.getElementById('bioPinBtn').classList.add('dim');
   document.getElementById('lockScreen').style.display = 'flex';
 }
