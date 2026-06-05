@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- physico-wallet v2.21 -->
+<!-- physico-wallet v2.22 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -646,6 +646,9 @@ input,select,textarea{font-family:inherit}
       <div id="top3cats" style="font-size:12px;color:var(--text2);margin-top:6px">-</div>
     </div>
   </div>
+
+  <!-- 카드 청구 예정 -->
+  <div id="cardBillingSection"></div>
 
   <!-- 카테고리 필터 -->
   <div class="filter-bar" id="catFilter">
@@ -1816,7 +1819,7 @@ document.querySelectorAll('.tab').forEach(btn=>{
     const tab = btn.dataset.tab;
     document.querySelectorAll('.content').forEach(c=>c.classList.add('hidden'));
     document.getElementById('tab-'+tab).classList.remove('hidden');
-    if(tab==='history') renderHistory();
+    if(tab==='history'){ renderHistory(); renderCardBilling(); }
     if(tab==='analysis') renderAnalysis();
     if(tab==='settings') renderSettings();
     if(tab==='invest'){ fetchFxRate(); loadStockData().then(()=> refreshAllPrices()); startPriceTimer(); }
@@ -2527,6 +2530,94 @@ function updateCardSelect(){
   }
 }
 
+async function updateCardDays(id){
+  const closingDay  = parseInt(document.getElementById('cd_close_'+id).value) || null;
+  const paymentDay  = parseInt(document.getElementById('cd_pay_'+id).value)   || null;
+  if(closingDay && (closingDay < 1 || closingDay > 31)){ showToast('마감일을 1~31 사이로 입력해주세요','error'); return; }
+  if(paymentDay && (paymentDay < 1 || paymentDay > 31)){ showToast('결제일을 1~31 사이로 입력해주세요','error'); return; }
+  const { error } = await supa.from('user_cards')
+    .update({ closing_day: closingDay, payment_day: paymentDay })
+    .eq('id', id);
+  if(error){ showToast('저장 실패: '+error.message,'error'); return; }
+  showToast('저장됐습니다 ✅');
+  await loadUserCards();
+  renderSettings();
+  renderCardBilling();
+}
+
+// 카드 청구 기간 계산
+function getCardBillingPeriod(closingDay, today = new Date()){
+  const y = today.getFullYear(), m = today.getMonth(), d = today.getDate();
+  const p = (y,m) => ({ y, m: m < 0 ? (m+12) : m%12, y2: m<0 ? y-1 : m>11 ? y+1 : y });
+  const pad = n => String(n).padStart(2,'0');
+
+  let sY, sM, sD, eY, eM, eD, pY, pM;
+  if(d <= closingDay){
+    // 이번 달 마감일 이전 → 지난달 (마감일+1) ~ 이번달 마감일
+    const prev = m===0 ? {y:y-1,m:11} : {y,m:m-1};
+    sY=prev.y; sM=prev.m; sD=closingDay+1;
+    eY=y; eM=m; eD=closingDay;
+    const next = m===11 ? {y:y+1,m:0} : {y,m:m+1};
+    pY=next.y; pM=next.m;
+  } else {
+    // 마감일 지남 → 이번달 (마감일+1) ~ 다음달 마감일
+    sY=y; sM=m; sD=closingDay+1;
+    const next = m===11 ? {y:y+1,m:0} : {y,m:m+1};
+    eY=next.y; eM=next.m; eD=closingDay;
+    const pay  = eM===11 ? {y:eY+1,m:0} : {y:eY,m:eM+1};
+    pY=pay.y; pM=pay.m;
+  }
+  return {
+    start:    `${sY}-${pad(sM+1)}-${pad(sD)}`,
+    end:      `${eY}-${pad(eM+1)}-${pad(eD)}`,
+    payYear:  pY,
+    payMonth: pM+1  // 1-based
+  };
+}
+
+async function renderCardBilling(){
+  const section = document.getElementById('cardBillingSection');
+  if(!section || !currentUser) return;
+
+  const cards = userCards.filter(c => c.closing_day && c.payment_day);
+  if(!cards.length){ section.innerHTML = ''; return; }
+
+  const today   = new Date();
+  const results = [];
+
+  for(const card of cards){
+    const { start, end, payYear, payMonth } = getCardBillingPeriod(card.closing_day, today);
+    const { data } = await supa.from('expenses')
+      .select('amount')
+      .eq('user_id', currentUser.id)
+      .eq('card', card.name)
+      .eq('is_income', false)
+      .gte('date', start).lte('date', end);
+    const total = (data||[]).reduce((s,e)=>s+e.amount, 0);
+    const s = new Date(start+'T00:00:00'), e = new Date(end+'T00:00:00');
+    const period = `${s.getMonth()+1}/${s.getDate()} ~ ${e.getMonth()+1}/${e.getDate()}`;
+    results.push({ name:card.name, total, period, payYear, payMonth, payDay:card.payment_day });
+  }
+
+  section.innerHTML = `
+    <div class="summary-card full" style="margin-bottom:16px">
+      <div class="sc-label" style="margin-bottom:10px">💳 카드 청구 예정</div>
+      ${results.map(r=>`
+        <div style="display:flex;justify-content:space-between;align-items:center;
+          padding:9px 0;border-bottom:1px solid var(--border)">
+          <div>
+            <div style="font-size:13px;font-weight:600">${r.name}</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px">
+              ${r.period} 사용분 →
+              <span style="color:var(--amber);font-weight:600">${r.payMonth}월 ${r.payDay}일 출금</span>
+            </div>
+          </div>
+          <div style="font-size:17px;font-weight:800;color:var(--red)">${fmt(r.total)}</div>
+        </div>
+      `).join('')}
+    </div>`;
+}
+
 async function addCard(name){
   name = name.trim();
   if(!name){ showToast('카드 이름을 입력해주세요', 'error'); return; }
@@ -2565,14 +2656,40 @@ function renderSettings(){
     listEl.innerHTML = `<div style="font-size:13px;color:var(--text3);padding:4px 0">아래에서 카드를 추가해주세요</div>`;
   } else {
     listEl.innerHTML = userCards.map(c=>`
-      <div style="display:flex;align-items:center;justify-content:space-between;
-        padding:9px 0;border-bottom:1px solid var(--border)">
-        <span style="font-size:14px;font-weight:500">💳 ${c.name}</span>
-        <button onclick="removeCard('${c.id}')" style="
-          font-size:11px;color:var(--red);background:var(--red-dim);
-          border:1px solid rgba(239,68,68,.3);border-radius:6px;
-          padding:4px 10px;cursor:pointer;font-weight:600;
-        ">삭제</button>
+      <div style="padding:10px 0;border-bottom:1px solid var(--border)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <span style="font-size:14px;font-weight:600">💳 ${c.name}</span>
+          <button onclick="removeCard('${c.id}')" style="
+            font-size:11px;color:var(--red);background:var(--red-dim);
+            border:1px solid rgba(239,68,68,.3);border-radius:6px;
+            padding:4px 10px;cursor:pointer;font-weight:600;">삭제</button>
+        </div>
+        <div style="display:flex;gap:8px;align-items:flex-end">
+          <div style="flex:1">
+            <div style="font-size:10px;color:var(--text3);font-weight:600;margin-bottom:4px">마감일</div>
+            <div style="position:relative">
+              <input type="number" id="cd_close_${c.id}" min="1" max="31" placeholder="예: 14"
+                value="${c.closing_day||''}" inputmode="numeric"
+                style="width:100%;padding:8px 22px 8px 10px;background:var(--surface2);
+                  border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:13px;outline:none">
+              <span style="position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--text3)">일</span>
+            </div>
+          </div>
+          <div style="flex:1">
+            <div style="font-size:10px;color:var(--text3);font-weight:600;margin-bottom:4px">결제일</div>
+            <div style="position:relative">
+              <input type="number" id="cd_pay_${c.id}" min="1" max="31" placeholder="예: 15"
+                value="${c.payment_day||''}" inputmode="numeric"
+                style="width:100%;padding:8px 22px 8px 10px;background:var(--surface2);
+                  border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:13px;outline:none">
+              <span style="position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--text3)">일</span>
+            </div>
+          </div>
+          <button onclick="updateCardDays('${c.id}')" style="
+            padding:8px 14px;background:var(--indigo);color:#fff;
+            border-radius:8px;font-size:12px;font-weight:700;
+            border:none;cursor:pointer;white-space:nowrap;flex-shrink:0;">저장</button>
+        </div>
       </div>`).join('');
   }
 
